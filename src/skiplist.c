@@ -294,7 +294,9 @@ void insert_skiplist(struct skiplist *skplist, struct skplist_insert_request *in
 	//updates are done only with the curr node write locked, so we dont have race using the
 	//forward pointer
 	if (ret == 0) { //update logic
-		curr->forward_pointer[0]->kv->value = strdup(ins_req->value); //FIXME change strdup
+		// curr->forward_pointer[0]->kv->value = strdup(ins_req->value); //FIXME change strdup
+		curr->forward_pointer[0]->kv->value = calloc(1UL, ins_req->value_size);
+		memcpy(curr->forward_pointer[0]->kv->value, ins_req->value, ins_req->value_size);
 		RWLOCK_UNLOCK(&curr->rw_nodelock);
 		return;
 	} else { //insert logic
