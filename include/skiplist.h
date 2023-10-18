@@ -1,5 +1,9 @@
 #ifndef MY_SKIPLIST_IMPL_H_
 #define MY_SKIPLIST_IMPL_H_
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define SKPLIST_MAX_LEVELS 12 //this variable will be at conf file. It shows the max_levels of the skiplist
 //it should be allocated according to L0 size
 #include <pthread.h>
@@ -92,4 +96,7 @@ void get_next(struct skiplist_iterator *iter);
 /*return 1 if valid 0 if not valid*/
 uint8_t is_valid(struct skiplist_iterator *iter);
 void skplist_close_iterator(struct skiplist_iterator *iter);
+#ifdef __cplusplus
+}
+#endif
 #endif // SKIPLIST_H_
