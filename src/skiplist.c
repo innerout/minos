@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include <unistd.h>
 /*FIXME this defines goes to parallax (already exists)*/
 #define RWLOCK_INIT(L, attr) pthread_rwlock_init(L, attr)
 #define RWLOCK_WRLOCK(L) pthread_rwlock_wrlock(L)
@@ -197,6 +197,11 @@ struct value_descriptor search_skiplist(struct skiplist *skplist, uint32_t key_s
 	if (ret == 0) {
 		ret_val.value_size = curr->forward_pointer[0]->kv->value_size;
 		ret_val.value = malloc(ret_val.value_size);
+		if (NULL == ret_val.value) {
+			fprintf(stderr, "%s:%s:%d[FATAL] malloc failed for size %d", __FILE__, __func__, __LINE__,
+				ret_val.value_size);
+			_exit(EXIT_FAILURE);
+		}
 		memcpy(ret_val.value, curr->forward_pointer[0]->kv->value, ret_val.value_size);
 		ret_val.found = 1;
 		RWLOCK_UNLOCK(&curr->rw_nodelock);
