@@ -1,5 +1,5 @@
-#ifndef MY_SKIPLIST_IMPL_H_
-#define MY_SKIPLIST_IMPL_H_
+#ifndef MINOS_H
+#define MINOS_H
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -33,23 +33,23 @@ struct node_data {
 	void *value;
 };
 
-struct skiplist_node {
+struct minos_node {
 	/*for parallax use*/
 	pthread_rwlock_t rw_nodelock;
-	struct skiplist_node *forward_pointer[SKPLIST_MAX_LEVELS];
+	struct minos_node *forward_pointer[SKPLIST_MAX_LEVELS];
 	uint32_t level;
 	struct node_data *kv;
 	uint8_t tombstone : 1;
 	uint8_t is_NIL;
 };
 
-struct skiplist_iterator {
+struct minos_iterator {
 	pthread_rwlock_t rw_iterlock;
-	struct skiplist_node *iter_node;
+	struct minos_node *iter_node;
 	uint8_t is_valid;
 };
 
-struct skplist_insert_request {
+struct minos_insert_request {
 	uint64_t kv_dev_offt;
 	uint32_t key_size;
 	void *key;
@@ -58,10 +58,10 @@ struct skplist_insert_request {
 	uint8_t tombstone : 1;
 };
 
-struct skiplist {
+struct minos {
 	uint32_t level; //this variable will be used as the level hint
-	struct skiplist_node *header;
-	struct skiplist_node *NIL_element; //last element of the skip list
+	struct minos_node *header;
+	struct minos_node *NIL_element; //last element of the skip list
 	/* a generic key comparator, comparator should return:
 	 * > 0 if key1 > key2
 	 * < 0 key2 > key1
@@ -69,34 +69,34 @@ struct skiplist {
 	int (*comparator)(void *key1, void *key2, char key1_format, char key2_format);
 
 	/* generic node allocator */
-	struct skiplist_node *(*make_node)(struct skplist_insert_request *ins_req);
+	struct minos_node *(*make_node)(struct minos_insert_request *ins_req);
 };
 
-struct value_descriptor {
+struct minos_value {
 	void *value;
 	uint32_t value_size;
 	uint8_t found;
 };
 
-struct skiplist *init_skiplist(void);
-void change_comparator_of_skiplist(struct skiplist *skplist,
-				   int (*comparator)(void *key1, void *key2, char key1_format, char key2_format));
+struct minos *minos_init(void);
+void minos_change_comparator(struct minos *skplist,
+			     int (*comparator)(void *key1, void *key2, char key1_format, char key2_format));
 
-void change_node_allocator_of_skiplist(struct skiplist *skplist,
-				       struct skiplist_node *make_node(struct skplist_insert_request *ins_req));
+void minos_change_node_allocator(struct minos *skplist,
+				 struct minos_node *make_node(struct minos_insert_request *ins_req));
 /*skiplist operations*/
-struct value_descriptor search_skiplist(struct skiplist *skplist, uint32_t key_size, void *search_key);
-void insert_skiplist(struct skiplist *skplist, struct skplist_insert_request *ins_req);
-void delete_skiplist(struct skiplist *skplist, char *key); //TBI
-void free_skiplist(struct skiplist *skplist);
+struct minos_value minos_search(struct minos *skplist, uint32_t key_size, void *search_key);
+void minos_insert(struct minos *skplist, struct minos_insert_request *ins_req);
+void minos_delete(struct minos *skplist, char *key); //TBI
+void minos_free(struct minos *skplist);
 /*iterators staff*/
-void init_iterator(struct skiplist_iterator *iter, struct skiplist *skplist, uint32_t key_size, void *search_key);
-void iter_seek_to_first(struct skiplist_iterator *iter, struct skiplist *skplist);
-void get_next(struct skiplist_iterator *iter);
+void minos_iter_init(struct minos_iterator *iter, struct minos *skplist, uint32_t key_size, void *search_key);
+void minos_iter_seek_first(struct minos_iterator *iter, struct minos *skplist);
+void minos_iter_get_next(struct minos_iterator *iter);
 /*return 1 if valid 0 if not valid*/
-uint8_t is_valid(struct skiplist_iterator *iter);
-void skplist_close_iterator(struct skiplist_iterator *iter);
+uint8_t minos_iter_is_valid(struct minos_iterator *iter);
+void minos_iter_close(struct minos_iterator *iter);
 #ifdef __cplusplus
 }
 #endif
-#endif // SKIPLIST_H_
+#endif

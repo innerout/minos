@@ -1,7 +1,7 @@
 #include <assert.h>
 #include <inttypes.h>
+#include <minos.h>
 #include <pthread.h>
-#include <skiplist.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,11 +17,11 @@ struct thread_info {
 	uint32_t *tid;
 };
 
-struct skiplist *my_skiplist;
+struct minos *my_skiplist;
 
-static void print_skplist(struct skiplist *skplist)
+static void print_skplist(struct minos *skplist)
 {
-	struct skiplist_node *curr;
+	struct minos_node *curr;
 	for (int i = 0; i < SKPLIST_MAX_LEVELS; i++) {
 		curr = skplist->header;
 		printf("keys at level %d -> ", i);
@@ -39,7 +39,7 @@ static void *populate_the_skiplist(void *args)
 	char *key = malloc(strlen(KV_PREFIX) + sizeof(long long unsigned));
 	int *tid = (int *)args;
 	uint32_t key_size;
-	struct skplist_insert_request ins_req;
+	struct minos_insert_request ins_req;
 	from = (int)(((*tid) / (double)NUM_OF_THREADS) * KVS_NUM);
 	to = (int)(((*tid + 1) / (double)NUM_OF_THREADS) * KVS_NUM);
 	printf("inserting from %d to %d\n", from, to);
@@ -52,15 +52,15 @@ static void *populate_the_skiplist(void *args)
 		ins_req.value_size = key_size;
 		ins_req.value = key;
 		ins_req.tombstone = 0;
-		insert_skiplist(my_skiplist, &ins_req);
+		minos_insert(my_skiplist, &ins_req);
 	}
 	pthread_exit(NULL);
 }
 
-static void print_each_level_size(struct skiplist skplist)
+static void print_each_level_size(struct minos skplist)
 {
 	uint64_t count, i;
-	struct skiplist_node *curr;
+	struct minos_node *curr;
 	for (i = 0; i < SKPLIST_MAX_LEVELS; i++) {
 		count = 0;
 		curr = skplist.header;
@@ -73,7 +73,7 @@ static void print_each_level_size(struct skiplist skplist)
 	}
 }
 
-static void delete_half_keys(struct skiplist *skplist)
+static void delete_half_keys(struct minos *skplist)
 {
 	int i;
 	char *key = malloc(strlen(KV_PREFIX) + sizeof(long long unsigned));
@@ -82,7 +82,7 @@ static void delete_half_keys(struct skiplist *skplist)
 		memcpy(key, KV_PREFIX, strlen(KV_PREFIX));
 		sprintf(key + strlen(KV_PREFIX), "%llu", (unsigned long long)i);
 		printf("Deleting key%s\n", key);
-		delete_skiplist(skplist, key);
+		minos_delete(skplist, key);
 		print_skplist(skplist);
 	}
 }
@@ -93,7 +93,7 @@ static void *search_the_skiplist(void *args)
 	int i, from, to;
 	char *key = malloc(strlen(KV_PREFIX) + sizeof(long long unsigned));
 	int *tid = (int *)args;
-	struct value_descriptor ret_val;
+	struct minos_value ret_val;
 	uint32_t key_size;
 
 	from = (int)(((*tid) / (double)NUM_OF_THREADS) * KVS_NUM);
@@ -103,7 +103,7 @@ static void *search_the_skiplist(void *args)
 		memcpy(key, KV_PREFIX, strlen(KV_PREFIX));
 		sprintf(key + strlen(KV_PREFIX), "%llu", (unsigned long long)i);
 		key_size = strlen(key);
-		ret_val = search_skiplist(my_skiplist, key_size, key);
+		ret_val = minos_search(my_skiplist, key_size, key);
 		assert(ret_val.found == 1);
 		assert(memcmp(ret_val.value, key, ret_val.value_size) == 0); //keys and value are same in this test
 	}
@@ -113,7 +113,7 @@ static void *search_the_skiplist(void *args)
 static void validate_number_of_kvs()
 {
 	int count = 0;
-	struct skiplist_node *curr = my_skiplist->header->forward_pointer[0]; //skip the header
+	struct minos_node *curr = my_skiplist->header->forward_pointer[0]; //skip the header
 
 	while (!curr->is_NIL) {
 		++count;
@@ -125,15 +125,15 @@ static void validate_number_of_kvs()
 static void validate_number_of_kvs_with_iterators()
 {
 	int count = 0;
-	struct skiplist_iterator *iter = (struct skiplist_iterator *)calloc(1, sizeof(struct skiplist_iterator));
-	iter_seek_to_first(iter, my_skiplist);
-	while (is_valid(iter)) {
+	struct minos_iterator *iter = (struct minos_iterator *)calloc(1, sizeof(struct minos_iterator));
+	minos_iter_seek_first(iter, my_skiplist);
+	while (minos_iter_is_valid(iter)) {
 		++count;
-		get_next(iter);
+		minos_iter_get_next(iter);
 	}
 	printf("Count is %d\n", count);
 	assert(KVS_NUM == count);
-	skplist_close_iterator(iter);
+	minos_iter_close(iter);
 }
 
 int main()
@@ -142,7 +142,7 @@ int main()
 	int i;
 	struct thread_info thread_buf[NUM_OF_THREADS];
 
-	my_skiplist = init_skiplist();
+	my_skiplist = minos_init();
 	assert(my_skiplist->level == 0);
 	for (i = 0; i < SKPLIST_MAX_LEVELS; i++)
 		assert(my_skiplist->header->forward_pointer[i] == my_skiplist->NIL_element);
@@ -169,5 +169,5 @@ int main()
 		pthread_join(thread_buf[i].th, NULL);
 
 	validate_number_of_kvs_with_iterators();
-	free_skiplist(my_skiplist);
+	minos_free(my_skiplist);
 }

@@ -1,7 +1,7 @@
 include(PreventInSouceBuilds.cmake.in)
 cmake_minimum_required(VERSION 3.17)
 project(
-  skiplist
+  minos
   VERSION 1.0.0
   LANGUAGES C CXX)
 
@@ -32,7 +32,7 @@ endif()
 include(FetchContent)
 include(CTest)
 include(GNUInstallDirs)
-set(SOURCE_FILES src/skiplist.c)
+set(SOURCE_FILES src/minos.c)
 find_package(Threads REQUIRED)
 
 FetchContent_Declare(
@@ -58,7 +58,7 @@ target_include_directories(
          $<INSTALL_INTERFACE:include>
   PRIVATE src)
 
-set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME skiplist
+set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME minos
                                                  CLEAN_DIRECT_OUTPUT 1)
 target_link_libraries(${PROJECT_NAME} PRIVATE Threads::Threads)
 
@@ -72,12 +72,12 @@ endif()
 
 install(
   TARGETS ${PROJECT_NAME}
-  EXPORT skiplist
+  EXPORT minos
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(DIRECTORY include/ DESTINATION include)
-install(EXPORT skiplist DESTINATION share/${PROJECT_NAME}/cmake)
+install(EXPORT minos DESTINATION share/${PROJECT_NAME}/cmake)
 
 export(TARGETS ${PROJECT_NAME} FILE ${PROJECT_NAME}.cmake)
 

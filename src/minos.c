@@ -1,5 +1,5 @@
 #include <assert.h>
-#include <skiplist.h>
+#include <minos.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -32,9 +32,9 @@ static int default_skiplist_comparator(void *key1, void *key2, char key1_format,
 	int ret;
 	/*key1 is the curr node being examinated
 	 *meaning the curr->forward[i] */
-	struct skiplist_node *curr_forward = (struct skiplist_node *)key1;
+	struct minos_node *curr_forward = (struct minos_node *)key1;
 	/*key2 is the insert request obj*/
-	struct skplist_insert_request *ins_req = (struct skplist_insert_request *)key2;
+	struct minos_insert_request *ins_req = (struct minos_insert_request *)key2;
 	/*key1 and key2 formats are always KV_FORMAT*/
 
 	ret = memcmp(curr_forward->kv->key, ins_req->key,
@@ -52,9 +52,9 @@ static int default_skiplist_comparator(void *key1, void *key2, char key1_format,
 	return 0;
 }
 
-static struct skiplist_node *default_make_node(struct skplist_insert_request *ins_req)
+static struct minos_node *default_make_node(struct minos_insert_request *ins_req)
 {
-	struct skiplist_node *new_node = (struct skiplist_node *)malloc(sizeof(struct skiplist_node));
+	struct minos_node *new_node = (struct minos_node *)malloc(sizeof(struct minos_node));
 	new_node->kv = (struct node_data *)malloc(sizeof(struct node_data));
 	if (new_node == NULL || new_node->kv == NULL) {
 		printf("Malloc failed to allocate a node\n");
@@ -77,7 +77,7 @@ static struct skiplist_node *default_make_node(struct skplist_insert_request *in
 }
 
 /*returns the biggest non-null level*/
-static uint32_t calculate_level(struct skiplist *skplist)
+static uint32_t calculate_level(struct minos *skplist)
 {
 	uint32_t i, lvl = 0;
 	for (i = 0; i < SKPLIST_MAX_LEVELS; i++) {
@@ -91,12 +91,12 @@ static uint32_t calculate_level(struct skiplist *skplist)
 }
 
 // skplist is an object called by reference
-struct skiplist *init_skiplist(void)
+struct minos *minos_init(void)
 {
 	int i;
-	struct skiplist *skplist = (struct skiplist *)malloc(sizeof(struct skiplist));
+	struct minos *skplist = (struct minos *)malloc(sizeof(struct minos));
 	// allocate NIL (sentinel)
-	skplist->NIL_element = (struct skiplist_node *)malloc(sizeof(struct skiplist_node));
+	skplist->NIL_element = (struct minos_node *)malloc(sizeof(struct minos_node));
 	if (skplist->NIL_element == NULL) {
 		printf("Malloced failed\n");
 		assert(0);
@@ -110,7 +110,7 @@ struct skiplist *init_skiplist(void)
 	// level is 0
 	skplist->level = 0; //FIXME this will be the level hint
 
-	skplist->header = (struct skiplist_node *)malloc(sizeof(struct skiplist_node));
+	skplist->header = (struct minos_node *)malloc(sizeof(struct minos_node));
 	if (skplist->header == NULL) {
 		printf("Malloced failed\n");
 		assert(0);
@@ -132,25 +132,25 @@ struct skiplist *init_skiplist(void)
 	return skplist;
 }
 
-void change_comparator_of_skiplist(struct skiplist *skplist, int (*comparator)(void *, void *, char, char))
+void minos_change_comparator(struct minos *skplist, int (*comparator)(void *, void *, char, char))
 {
 	assert(skplist != NULL);
 	skplist->comparator = comparator;
 }
 
-void change_node_allocator_of_skiplist(struct skiplist *skplist,
-				       struct skiplist_node *make_node(struct skplist_insert_request *ins_req))
+void minos_change_node_allocator(struct minos *skplist,
+				 struct minos_node *make_node(struct minos_insert_request *ins_req))
 {
 	assert(skplist != NULL);
 	skplist->make_node = make_node;
 }
 
-struct value_descriptor search_skiplist(struct skiplist *skplist, uint32_t search_key_size, void *search_key)
+struct minos_value minos_search(struct minos *skplist, uint32_t search_key_size, void *search_key)
 {
 	int i, ret;
 	uint32_t lvl;
-	struct value_descriptor ret_val;
-	struct skiplist_node *curr, *next_curr;
+	struct minos_value ret_val;
+	struct minos_node *curr, *next_curr;
 
 	RWLOCK_RDLOCK(&skplist->header->rw_nodelock);
 	curr = skplist->header;
@@ -216,8 +216,8 @@ struct value_descriptor search_skiplist(struct skiplist *skplist, uint32_t searc
 }
 
 /*(write)lock the node in front of node *key* at level lvl*/
-static struct skiplist_node *getLock(struct skiplist *skplist, struct skiplist_node *curr,
-				     struct skplist_insert_request *ins_req, int lvl)
+static struct minos_node *getLock(struct minos *skplist, struct minos_node *curr, struct minos_insert_request *ins_req,
+				  int lvl)
 {
 	//see if we can advance further due to parallel modifications
 	//first proceed with read locks, then acquire write locks
@@ -226,7 +226,7 @@ static struct skiplist_node *getLock(struct skiplist *skplist, struct skiplist_n
 	//...
 	//
 	int ret, node_key_size;
-	struct skiplist_node *next_curr;
+	struct minos_node *next_curr;
 
 	if (lvl == 0) //if lvl is 0 we have locked the curr due to the search accross the levels
 		RWLOCK_UNLOCK(&curr->rw_nodelock);
@@ -252,12 +252,12 @@ static struct skiplist_node *getLock(struct skiplist *skplist, struct skiplist_n
 	return curr;
 }
 
-void insert_skiplist(struct skiplist *skplist, struct skplist_insert_request *ins_req)
+void minos_insert(struct minos *skplist, struct minos_insert_request *ins_req)
 {
 	int i, ret;
 	uint32_t node_key_size, lvl;
-	struct skiplist_node *update_vector[SKPLIST_MAX_LEVELS];
-	struct skiplist_node *curr, *next_curr;
+	struct minos_node *update_vector[SKPLIST_MAX_LEVELS];
+	struct minos_node *curr, *next_curr;
 	RWLOCK_RDLOCK(&skplist->header->rw_nodelock);
 	curr = skplist->header;
 	//we have the lock of the header, determine the lvl of the list
@@ -303,7 +303,7 @@ void insert_skiplist(struct skiplist *skplist, struct skplist_insert_request *in
 		return;
 	} else { //insert logic
 		int new_node_lvl = random_level();
-		struct skiplist_node *new_node = skplist->make_node(ins_req);
+		struct minos_node *new_node = skplist->make_node(ins_req);
 		new_node->level = new_node_lvl;
 		//MUTEX_LOCK(&levels_lock_buf[new_node->level]); //needed for concurrent deletes
 
@@ -328,7 +328,7 @@ void insert_skiplist(struct skiplist *skplist, struct skplist_insert_request *in
 }
 
 //update_vector is an array of size SKPLIST_MAX_LEVELS
-static void delete_key(struct skiplist *skplist, struct skiplist_node **update_vector, struct skiplist_node *curr)
+static void delete_key(struct minos *skplist, struct minos_node **update_vector, struct minos_node *curr)
 {
 	int i;
 	for (i = 0; i <= skplist->level; i++) {
@@ -344,12 +344,12 @@ static void delete_key(struct skiplist *skplist, struct skiplist_node **update_v
 		--skplist->level;
 }
 
-void delete_skiplist(struct skiplist *skplist, char *key)
+void minos_delete(struct minos *skplist, char *key)
 {
 	int32_t i, key_size;
 	int ret;
-	struct skiplist_node *update_vector[SKPLIST_MAX_LEVELS];
-	struct skiplist_node *curr = skplist->header;
+	struct minos_node *update_vector[SKPLIST_MAX_LEVELS];
+	struct minos_node *curr = skplist->header;
 
 	key_size = strlen(key);
 
@@ -385,10 +385,10 @@ void delete_skiplist(struct skiplist *skplist, char *key)
 /*iterator will hold the readlock of the corresponding search_key's node.
  ! all the inserts/update operations are valid except the ones containing that node(because for such modifications
  the write lock is needed)*/
-void init_iterator(struct skiplist_iterator *iter, struct skiplist *skplist, uint32_t key_size, void *search_key)
+void minos_iter_init(struct minos_iterator *iter, struct minos *skplist, uint32_t key_size, void *search_key)
 {
 	int i, lvl;
-	struct skiplist_node *curr, *next_curr;
+	struct minos_node *curr, *next_curr;
 	int node_key_size, ret;
 	RWLOCK_RDLOCK(&skplist->header->rw_nodelock);
 	curr = skplist->header;
@@ -445,9 +445,9 @@ void init_iterator(struct skiplist_iterator *iter, struct skiplist *skplist, uin
 
 /*initialize a scanner to the first key of the skiplist
  *this is trivial, acquire the rdlock of the first level0 node */
-void iter_seek_to_first(struct skiplist_iterator *iter, struct skiplist *skplist)
+void minos_iter_seek_first(struct minos_iterator *iter, struct minos *skplist)
 {
-	struct skiplist_node *curr, *next_curr;
+	struct minos_node *curr, *next_curr;
 	RWLOCK_RDLOCK(&skplist->header->rw_nodelock);
 	curr = skplist->header;
 	next_curr = curr->forward_pointer[0];
@@ -466,10 +466,10 @@ void iter_seek_to_first(struct skiplist_iterator *iter, struct skiplist *skplist
 	}
 }
 /*we are searching level0 always so the next node is trivial to be found*/
-void get_next(struct skiplist_iterator *iter)
+void minos_iter_get_next(struct minos_iterator *iter)
 {
 	if (iter->is_valid == 1) {
-		struct skiplist_node *next_node = iter->iter_node->forward_pointer[0];
+		struct minos_node *next_node = iter->iter_node->forward_pointer[0];
 		if (next_node->is_NIL) {
 			printf("Reached end of the skplist\n");
 			iter->is_valid = 0;
@@ -485,20 +485,20 @@ void get_next(struct skiplist_iterator *iter)
 	}
 }
 
-void skplist_close_iterator(struct skiplist_iterator *iter)
+void minos_iter_close(struct minos_iterator *iter)
 {
 	RWLOCK_UNLOCK(&iter->iter_node->rw_nodelock);
 	free(iter);
 }
 
-uint8_t is_valid(struct skiplist_iterator *iter)
+uint8_t minos_iter_is_valid(struct minos_iterator *iter)
 {
 	return iter->is_valid;
 }
 
-void free_skiplist(struct skiplist *skplist)
+void minos_free(struct minos *skplist)
 {
-	struct skiplist_node *curr, *next_curr;
+	struct minos_node *curr, *next_curr;
 	curr = skplist->header;
 
 	while (!curr->is_NIL) {
