@@ -7,8 +7,8 @@ extern "C" {
 #define SKPLIST_MAX_LEVELS 12 //this variable will be at conf file. It shows the max_levels of the skiplist
 //it should be allocated according to L0 size
 #include <pthread.h>
+#include <stdbool.h>
 #include <stdint.h>
-
 /* kv_category has the same format as Parallax
  * users can define the category of their keys
  * IMPORTANT: the *_INLOG choices should not be used for in-memory staff!
@@ -85,7 +85,7 @@ void minos_change_node_allocator(struct minos *skplist,
 /*skiplist operations*/
 struct minos_value minos_search(struct minos *skplist, uint32_t key_size, void *search_key);
 void minos_insert(struct minos *skplist, struct minos_insert_request *ins_req);
-void minos_delete(struct minos *skplist, char *key); //TBI
+bool minos_delete(struct minos *skplist, const char *key, uint32_t key_size); //TBI
 void minos_free(struct minos *skplist);
 /*iterators staff*/
 void minos_iter_init(struct minos_iterator *iter, struct minos *skplist, uint32_t key_size, void *search_key);

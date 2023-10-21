@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <minos.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -52,7 +53,7 @@ static int default_skiplist_comparator(void *key1, void *key2, char key1_format,
 	return 0;
 }
 
-static struct minos_node *default_make_node(struct minos_insert_request *ins_req)
+static struct minos_node *minos_create_node(struct minos_insert_request *ins_req)
 {
 	struct minos_node *new_node = (struct minos_node *)malloc(sizeof(struct minos_node));
 	new_node->kv = (struct node_data *)malloc(sizeof(struct node_data));
@@ -77,7 +78,7 @@ static struct minos_node *default_make_node(struct minos_insert_request *ins_req
 }
 
 /*returns the biggest non-null level*/
-static uint32_t calculate_level(struct minos *skplist)
+static uint32_t minos_calc_level(struct minos *skplist)
 {
 	uint32_t i, lvl = 0;
 	for (i = 0; i < SKPLIST_MAX_LEVELS; i++) {
@@ -93,12 +94,11 @@ static uint32_t calculate_level(struct minos *skplist)
 // skplist is an object called by reference
 struct minos *minos_init(void)
 {
-	int i;
 	struct minos *skplist = (struct minos *)malloc(sizeof(struct minos));
 	// allocate NIL (sentinel)
 	skplist->NIL_element = (struct minos_node *)malloc(sizeof(struct minos_node));
 	if (skplist->NIL_element == NULL) {
-		printf("Malloced failed\n");
+		fprintf(stderr, "Malloced failed\n");
 		assert(0);
 		exit(EXIT_FAILURE);
 	}
@@ -123,11 +123,11 @@ struct minos *minos_init(void)
 	}
 
 	// all forward pointers of header point to NIL
-	for (i = 0; i < SKPLIST_MAX_LEVELS; i++)
+	for (int i = 0; i < SKPLIST_MAX_LEVELS; i++)
 		skplist->header->fwd_pointer[i] = skplist->NIL_element;
 
 	skplist->comparator = default_skiplist_comparator;
-	skplist->make_node = default_make_node;
+	skplist->make_node = minos_create_node;
 
 	return skplist;
 }
@@ -155,7 +155,7 @@ struct minos_value minos_search(struct minos *skplist, uint32_t search_key_size,
 	RWLOCK_RDLOCK(&skplist->header->rw_nodelock);
 	curr = skplist->header;
 	//replace this with the hint level
-	lvl = calculate_level(skplist);
+	lvl = minos_calc_level(skplist);
 
 	for (i = lvl; i >= 0; i--) {
 		next_curr = curr->fwd_pointer[i];
@@ -260,7 +260,7 @@ void minos_insert(struct minos *skplist, struct minos_insert_request *ins_req)
 	RWLOCK_RDLOCK(&skplist->header->rw_nodelock);
 	curr = skplist->header;
 	//we have the lock of the header, determine the lvl of the list
-	lvl = calculate_level(skplist);
+	lvl = minos_calc_level(skplist);
 	/*traverse the levels till 0 */
 	for (i = lvl; i >= 0; i--) {
 		next_curr = curr->fwd_pointer[i];
@@ -326,7 +326,7 @@ void minos_insert(struct minos *skplist, struct minos_insert_request *ins_req)
 }
 
 //update_vector is an array of size SKPLIST_MAX_LEVELS
-static void delete_key(struct minos *skplist, struct minos_node **update_vector, struct minos_node *curr)
+static void minos_delete_key(struct minos *skplist, struct minos_node **update_vector, struct minos_node *curr)
 {
 	int i;
 	for (i = 0; i <= skplist->level; i++) {
@@ -342,25 +342,21 @@ static void delete_key(struct minos *skplist, struct minos_node **update_vector,
 		--skplist->level;
 }
 
-void minos_delete(struct minos *skplist, char *key)
+bool minos_delete(struct minos *skplist, const char *key, uint32_t key_size)
 {
-	int32_t i, key_size;
 	int ret;
 	struct minos_node *update_vector[SKPLIST_MAX_LEVELS];
 	struct minos_node *curr = skplist->header;
 
-	key_size = strlen(key);
-
-	for (i = skplist->level; i >= 0; i--) {
+	for (int i = skplist->level; i >= 0; i--) {
 		while (1) {
 			if (curr->fwd_pointer[i]->is_NIL == 1)
 				break; //reached sentinel
 
 			ret = memcmp(curr->fwd_pointer[i]->kv->key, key, key_size);
-			if (ret < 0)
-				curr = curr->fwd_pointer[i];
-			else
+			if (ret >= 0)
 				break;
+			curr = curr->fwd_pointer[i];
 		}
 
 		update_vector[i] = curr;
@@ -370,12 +366,11 @@ void minos_delete(struct minos *skplist, char *key)
 	if (!curr->is_NIL)
 		ret = memcmp(curr->kv->key, key, key_size);
 	else
-		return; //Did not found the key to delete (reached sentinel)
-
-	if (ret == 0) //found the key
-		delete_key(skplist, update_vector, curr);
-
-	/*FIXME else key doesn't exist in list so terminate. (should we warn the user?)*/
+		return false; //Did not found the key to delete (reached sentinel)
+	if (ret != 0)
+		return false; //key not found
+	minos_delete_key(skplist, update_vector, curr);
+	return true;
 }
 
 /*iterators staff*/
@@ -391,7 +386,7 @@ void minos_iter_init(struct minos_iterator *iter, struct minos *skplist, uint32_
 	RWLOCK_RDLOCK(&skplist->header->rw_nodelock);
 	curr = skplist->header;
 	//replace this with the hint level
-	lvl = calculate_level(skplist);
+	lvl = minos_calc_level(skplist);
 
 	for (i = lvl; i >= 0; i--) {
 		next_curr = curr->fwd_pointer[i];

@@ -82,7 +82,7 @@ static void delete_half_keys(struct minos *skplist)
 		memcpy(key, KV_PREFIX, strlen(KV_PREFIX));
 		sprintf(key + strlen(KV_PREFIX), "%llu", (unsigned long long)i);
 		printf("Deleting key%s\n", key);
-		minos_delete(skplist, key);
+		minos_delete(skplist, key, strlen(key));
 		print_skplist(skplist);
 	}
 }
