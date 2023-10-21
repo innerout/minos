@@ -81,7 +81,7 @@ static uint32_t calculate_level(struct minos *skplist)
 {
 	uint32_t i, lvl = 0;
 	for (i = 0; i < SKPLIST_MAX_LEVELS; i++) {
-		if (skplist->header->forward_pointer[i] != skplist->NIL_element)
+		if (skplist->header->fwd_pointer[i] != skplist->NIL_element)
 			lvl = i;
 		else
 			break;
@@ -124,7 +124,7 @@ struct minos *minos_init(void)
 
 	// all forward pointers of header point to NIL
 	for (i = 0; i < SKPLIST_MAX_LEVELS; i++)
-		skplist->header->forward_pointer[i] = skplist->NIL_element;
+		skplist->header->fwd_pointer[i] = skplist->NIL_element;
 
 	skplist->comparator = default_skiplist_comparator;
 	skplist->make_node = default_make_node;
@@ -158,9 +158,9 @@ struct minos_value minos_search(struct minos *skplist, uint32_t search_key_size,
 	lvl = calculate_level(skplist);
 
 	for (i = lvl; i >= 0; i--) {
-		next_curr = curr->forward_pointer[i];
+		next_curr = curr->fwd_pointer[i];
 		while (1) {
-			if (curr->forward_pointer[i]->is_NIL)
+			if (curr->fwd_pointer[i]->is_NIL)
 				break;
 
 			// node_key_size = curr->forward_pointer[i]->kv->key_size;
@@ -168,16 +168,16 @@ struct minos_value minos_search(struct minos *skplist, uint32_t search_key_size,
 			// 	ret = memcmp(curr->forward_pointer[i]->kv->key, search_key, node_key_size);
 			// else
 			// 	ret = memcmp(curr->forward_pointer[i]->kv->key, search_key, key_size);
-			ret = memcmp(curr->forward_pointer[i]->kv->key, search_key,
-				     curr->forward_pointer[i]->kv->key_size < search_key_size ?
-					     curr->forward_pointer[i]->kv->key_size :
+			ret = memcmp(curr->fwd_pointer[i]->kv->key, search_key,
+				     curr->fwd_pointer[i]->kv->key_size < search_key_size ?
+					     curr->fwd_pointer[i]->kv->key_size :
 					     search_key_size);
 
 			if (ret < 0) {
 				RWLOCK_UNLOCK(&curr->rw_nodelock);
 				curr = next_curr;
 				RWLOCK_RDLOCK(&curr->rw_nodelock);
-				next_curr = curr->forward_pointer[i];
+				next_curr = curr->fwd_pointer[i];
 			} else
 				break;
 		}
@@ -187,24 +187,23 @@ struct minos_value minos_search(struct minos *skplist, uint32_t search_key_size,
 	//corner case
 	//next element for level 0 is sentinel, key not found
 	ret = 1;
-	if (!curr->forward_pointer[0]->is_NIL) {
+	if (!curr->fwd_pointer[0]->is_NIL) {
 		// node_key_size = curr->forward_pointer[0]->kv->key_size;
 		// search_key_size = search_key_size > node_key_size ? search_key_size : node_key_size;
-		ret = memcmp(curr->forward_pointer[0]->kv->key, search_key,
-			     curr->forward_pointer[0]->kv->key_size < search_key_size ?
-				     curr->forward_pointer[0]->kv->key_size :
-				     search_key_size);
+		ret = memcmp(curr->fwd_pointer[0]->kv->key, search_key,
+			     curr->fwd_pointer[0]->kv->key_size < search_key_size ? curr->fwd_pointer[0]->kv->key_size :
+										    search_key_size);
 	}
 
 	if (ret == 0) {
-		ret_val.value_size = curr->forward_pointer[0]->kv->value_size;
+		ret_val.value_size = curr->fwd_pointer[0]->kv->value_size;
 		ret_val.value = malloc(ret_val.value_size);
 		if (NULL == ret_val.value) {
 			fprintf(stderr, "%s:%s:%d[FATAL] malloc failed for size %d", __FILE__, __func__, __LINE__,
 				ret_val.value_size);
 			_exit(EXIT_FAILURE);
 		}
-		memcpy(ret_val.value, curr->forward_pointer[0]->kv->value, ret_val.value_size);
+		memcpy(ret_val.value, curr->fwd_pointer[0]->kv->value, ret_val.value_size);
 		ret_val.found = 1;
 		RWLOCK_UNLOCK(&curr->rw_nodelock);
 		return ret_val;
@@ -233,19 +232,19 @@ static struct minos_node *getLock(struct minos *skplist, struct minos_node *curr
 
 	//acquire the write locks from now on
 	RWLOCK_WRLOCK(&curr->rw_nodelock);
-	next_curr = curr->forward_pointer[lvl];
+	next_curr = curr->fwd_pointer[lvl];
 
 	while (1) {
-		if (curr->forward_pointer[lvl]->is_NIL)
+		if (curr->fwd_pointer[lvl]->is_NIL)
 			break;
 
-		ret = skplist->comparator(curr->forward_pointer[lvl], ins_req, SKPLIST_KV_FORMAT, SKPLIST_KV_FORMAT);
+		ret = skplist->comparator(curr->fwd_pointer[lvl], ins_req, SKPLIST_KV_FORMAT, SKPLIST_KV_FORMAT);
 
 		if (ret < 0) {
 			RWLOCK_UNLOCK(&curr->rw_nodelock);
 			curr = next_curr;
 			RWLOCK_WRLOCK(&curr->rw_nodelock);
-			next_curr = curr->forward_pointer[lvl];
+			next_curr = curr->fwd_pointer[lvl];
 		} else
 			break;
 	}
@@ -264,20 +263,19 @@ void minos_insert(struct minos *skplist, struct minos_insert_request *ins_req)
 	lvl = calculate_level(skplist);
 	/*traverse the levels till 0 */
 	for (i = lvl; i >= 0; i--) {
-		next_curr = curr->forward_pointer[i];
+		next_curr = curr->fwd_pointer[i];
 		while (1) {
-			if (curr->forward_pointer[i]->is_NIL) {
+			if (curr->fwd_pointer[i]->is_NIL) {
 				break;
 			}
 
-			ret = skplist->comparator(curr->forward_pointer[i], ins_req, SKPLIST_KV_FORMAT,
-						  SKPLIST_KV_FORMAT);
+			ret = skplist->comparator(curr->fwd_pointer[i], ins_req, SKPLIST_KV_FORMAT, SKPLIST_KV_FORMAT);
 
 			if (ret < 0) {
 				RWLOCK_UNLOCK(&curr->rw_nodelock);
 				curr = next_curr;
 				RWLOCK_RDLOCK(&curr->rw_nodelock);
-				next_curr = curr->forward_pointer[i];
+				next_curr = curr->fwd_pointer[i];
 			} else {
 				break;
 			}
@@ -288,17 +286,17 @@ void minos_insert(struct minos *skplist, struct minos_insert_request *ins_req)
 
 	curr = getLock(skplist, curr, ins_req, 0);
 	//compare forward's key with the key
-	if (!curr->forward_pointer[0]->is_NIL)
-		ret = skplist->comparator(curr->forward_pointer[0], ins_req, SKPLIST_KV_FORMAT, SKPLIST_KV_FORMAT);
+	if (!curr->fwd_pointer[0]->is_NIL)
+		ret = skplist->comparator(curr->fwd_pointer[0], ins_req, SKPLIST_KV_FORMAT, SKPLIST_KV_FORMAT);
 	else
 		ret = 1;
 
 	//updates are done only with the curr node write locked, so we dont have race using the
 	//forward pointer
 	if (ret == 0) { //update logic
-		curr->forward_pointer[0]->kv->value = calloc(1UL, ins_req->value_size);
-		memcpy(curr->forward_pointer[0]->kv->value, ins_req->value, ins_req->value_size);
-		curr->forward_pointer[0]->kv->value_size = ins_req->value_size;
+		curr->fwd_pointer[0]->kv->value = calloc(1UL, ins_req->value_size);
+		memcpy(curr->fwd_pointer[0]->kv->value, ins_req->value, ins_req->value_size);
+		curr->fwd_pointer[0]->kv->value_size = ins_req->value_size;
 		RWLOCK_UNLOCK(&curr->rw_nodelock);
 		return;
 	} else { //insert logic
@@ -318,8 +316,8 @@ void minos_insert(struct minos *skplist, struct minos_insert_request *ins_req)
 					       i); //we can change curr now cause level i-1 has
 			} //effectivly the new node and our job is done
 			//linking logic
-			new_node->forward_pointer[i] = curr->forward_pointer[i];
-			curr->forward_pointer[i] = new_node;
+			new_node->fwd_pointer[i] = curr->fwd_pointer[i];
+			curr->fwd_pointer[i] = new_node;
 			RWLOCK_UNLOCK(&curr->rw_nodelock);
 		}
 
@@ -332,15 +330,15 @@ static void delete_key(struct minos *skplist, struct minos_node **update_vector,
 {
 	int i;
 	for (i = 0; i <= skplist->level; i++) {
-		if (update_vector[i]->forward_pointer[i] != curr)
+		if (update_vector[i]->fwd_pointer[i] != curr)
 			break; //modifications for upper levels don't apply (passed the level of the curr node)
 
-		update_vector[i]->forward_pointer[i] = curr->forward_pointer[i];
+		update_vector[i]->fwd_pointer[i] = curr->fwd_pointer[i];
 	}
 	free(curr); //FIXME we will use tombstones?
 
 	//previous skplist->level dont have nodes anymore. header points to NIL, so reduce the level of the list
-	while (skplist->level > 0 && skplist->header->forward_pointer[skplist->level]->is_NIL)
+	while (skplist->level > 0 && skplist->header->fwd_pointer[skplist->level]->is_NIL)
 		--skplist->level;
 }
 
@@ -355,12 +353,12 @@ void minos_delete(struct minos *skplist, char *key)
 
 	for (i = skplist->level; i >= 0; i--) {
 		while (1) {
-			if (curr->forward_pointer[i]->is_NIL == 1)
+			if (curr->fwd_pointer[i]->is_NIL == 1)
 				break; //reached sentinel
 
-			ret = memcmp(curr->forward_pointer[i]->kv->key, key, key_size);
+			ret = memcmp(curr->fwd_pointer[i]->kv->key, key, key_size);
 			if (ret < 0)
-				curr = curr->forward_pointer[i];
+				curr = curr->fwd_pointer[i];
 			else
 				break;
 		}
@@ -368,7 +366,7 @@ void minos_delete(struct minos *skplist, char *key)
 		update_vector[i] = curr;
 	}
 	//retrieve it and check for existence
-	curr = curr->forward_pointer[0];
+	curr = curr->fwd_pointer[0];
 	if (!curr->is_NIL)
 		ret = memcmp(curr->kv->key, key, key_size);
 	else
@@ -396,22 +394,22 @@ void minos_iter_init(struct minos_iterator *iter, struct minos *skplist, uint32_
 	lvl = calculate_level(skplist);
 
 	for (i = lvl; i >= 0; i--) {
-		next_curr = curr->forward_pointer[i];
+		next_curr = curr->fwd_pointer[i];
 		while (1) {
-			if (curr->forward_pointer[i]->is_NIL) //reached sentinel for that level
+			if (curr->fwd_pointer[i]->is_NIL) //reached sentinel for that level
 				break;
 
-			node_key_size = curr->forward_pointer[i]->kv->key_size;
+			node_key_size = curr->fwd_pointer[i]->kv->key_size;
 			if (node_key_size > key_size)
-				ret = memcmp(curr->forward_pointer[i]->kv->key, search_key, node_key_size);
+				ret = memcmp(curr->fwd_pointer[i]->kv->key, search_key, node_key_size);
 			else
-				ret = memcmp(curr->forward_pointer[i]->kv->key, search_key, key_size);
+				ret = memcmp(curr->fwd_pointer[i]->kv->key, search_key, key_size);
 
 			if (ret < 0) {
 				RWLOCK_UNLOCK(&curr->rw_nodelock);
 				curr = next_curr;
 				RWLOCK_RDLOCK(&curr->rw_nodelock);
-				next_curr = curr->forward_pointer[i];
+				next_curr = curr->fwd_pointer[i];
 			} else
 				break;
 		}
@@ -419,10 +417,10 @@ void minos_iter_init(struct minos_iterator *iter, struct minos *skplist, uint32_
 	//we are infront of the node at level 0, node is locked
 	//corner case
 	//next element for level 0 is sentinel, key not found
-	if (!curr->forward_pointer[0]->is_NIL) {
-		node_key_size = curr->forward_pointer[0]->kv->key_size;
+	if (!curr->fwd_pointer[0]->is_NIL) {
+		node_key_size = curr->fwd_pointer[0]->kv->key_size;
 		key_size = key_size > node_key_size ? key_size : node_key_size;
-		ret = memcmp(curr->forward_pointer[0]->kv->key, search_key, key_size);
+		ret = memcmp(curr->fwd_pointer[0]->kv->key, search_key, key_size);
 	} else {
 		printf("Reached end of the skiplist, didn't found key");
 		iter->is_valid = 0;
@@ -432,7 +430,7 @@ void minos_iter_init(struct minos_iterator *iter, struct minos *skplist, uint32_
 
 	if (ret == 0) {
 		iter->is_valid = 1;
-		iter->iter_node = curr->forward_pointer[0];
+		iter->iter_node = curr->fwd_pointer[0];
 		/*lock iter_node unlock curr (remember curr is always behind the correct node)*/
 		RWLOCK_RDLOCK(&iter->iter_node->rw_nodelock);
 		RWLOCK_UNLOCK(&curr->rw_nodelock);
@@ -450,11 +448,11 @@ void minos_iter_seek_first(struct minos_iterator *iter, struct minos *skplist)
 	struct minos_node *curr, *next_curr;
 	RWLOCK_RDLOCK(&skplist->header->rw_nodelock);
 	curr = skplist->header;
-	next_curr = curr->forward_pointer[0];
+	next_curr = curr->fwd_pointer[0];
 
-	if (!curr->forward_pointer[0]->is_NIL) {
+	if (!curr->fwd_pointer[0]->is_NIL) {
 		iter->is_valid = 1;
-		iter->iter_node = curr->forward_pointer[0];
+		iter->iter_node = curr->fwd_pointer[0];
 		/*lock iter_node unlock curr (remember curr is always behind the correct node) */
 		RWLOCK_RDLOCK(&iter->iter_node->rw_nodelock);
 		RWLOCK_UNLOCK(&curr->rw_nodelock);
@@ -469,7 +467,7 @@ void minos_iter_seek_first(struct minos_iterator *iter, struct minos *skplist)
 void minos_iter_get_next(struct minos_iterator *iter)
 {
 	if (iter->is_valid == 1) {
-		struct minos_node *next_node = iter->iter_node->forward_pointer[0];
+		struct minos_node *next_node = iter->iter_node->fwd_pointer[0];
 		if (next_node->is_NIL) {
 			printf("Reached end of the skplist\n");
 			iter->is_valid = 0;
@@ -502,7 +500,7 @@ void minos_free(struct minos *skplist)
 	curr = skplist->header;
 
 	while (!curr->is_NIL) {
-		next_curr = curr->forward_pointer[0];
+		next_curr = curr->fwd_pointer[0];
 		free(curr);
 		curr = next_curr;
 	}

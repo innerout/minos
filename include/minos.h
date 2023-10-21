@@ -26,20 +26,19 @@ enum kv_category {
 enum kv_type { SKPLIST_KV_FORMAT = 19, SKPLIST_KV_PREFIX = 20 };
 
 struct node_data {
-	uint64_t kv_dev_offt; /* used for ptr to log */
 	uint32_t key_size;
-	void *key;
 	uint32_t value_size;
+	void *key;
 	void *value;
 };
 
 struct minos_node {
 	/*for parallax use*/
+	struct minos_node *fwd_pointer[SKPLIST_MAX_LEVELS];
 	pthread_rwlock_t rw_nodelock;
-	struct minos_node *forward_pointer[SKPLIST_MAX_LEVELS];
-	uint32_t level;
 	struct node_data *kv;
-	uint8_t tombstone : 1;
+	uint32_t level;
+	uint8_t tombstone;
 	uint8_t is_NIL;
 };
 
@@ -50,10 +49,9 @@ struct minos_iterator {
 };
 
 struct minos_insert_request {
-	uint64_t kv_dev_offt;
 	uint32_t key_size;
-	void *key;
 	uint32_t value_size;
+	void *key;
 	void *value;
 	uint8_t tombstone : 1;
 };

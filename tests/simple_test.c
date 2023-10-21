@@ -27,7 +27,7 @@ static void print_skplist(struct minos *skplist)
 		printf("keys at level %d -> ", i);
 		while (!curr->is_NIL) {
 			printf("[%d,%s], ", curr->kv->key_size, (char *)curr->kv->key);
-			curr = curr->forward_pointer[i];
+			curr = curr->fwd_pointer[i];
 		}
 		printf("\n");
 	}
@@ -67,7 +67,7 @@ static void print_each_level_size(struct minos skplist)
 
 		while (curr->is_NIL == 0) {
 			count++;
-			curr = curr->forward_pointer[i];
+			curr = curr->fwd_pointer[i];
 		}
 		printf("level's %" PRIu64 "size is %" PRIu64 "\n", i, count);
 	}
@@ -113,11 +113,11 @@ static void *search_the_skiplist(void *args)
 static void validate_number_of_kvs()
 {
 	int count = 0;
-	struct minos_node *curr = my_skiplist->header->forward_pointer[0]; //skip the header
+	struct minos_node *curr = my_skiplist->header->fwd_pointer[0]; //skip the header
 
 	while (!curr->is_NIL) {
 		++count;
-		curr = curr->forward_pointer[0];
+		curr = curr->fwd_pointer[0];
 	}
 	assert(count == KVS_NUM);
 }
@@ -145,7 +145,7 @@ int main()
 	my_skiplist = minos_init();
 	assert(my_skiplist->level == 0);
 	for (i = 0; i < SKPLIST_MAX_LEVELS; i++)
-		assert(my_skiplist->header->forward_pointer[i] == my_skiplist->NIL_element);
+		assert(my_skiplist->header->fwd_pointer[i] == my_skiplist->NIL_element);
 
 	for (i = 0; i < NUM_OF_THREADS; i++) {
 		thread_buf[i].tid = (uint32_t *)malloc(sizeof(int));
