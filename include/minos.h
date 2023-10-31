@@ -13,15 +13,15 @@ extern "C" {
  * users can define the category of their keys
  * IMPORTANT: the *_INLOG choices should not be used for in-memory staff!
 */
-enum kv_category {
-	SKPLIST_SMALL_INPLACE = 0,
-	SKPLIST_SMALL_INLOG,
-	SKPLIST_MEDIUM_INPLACE,
-	SKPLIST_MEDIUM_INLOG,
-	SKPLIST_BIG_INLOG,
-	SKPLIST_UNKNOWN_LOG_CATEGORY,
-	SKLIST_BIG_INPLACE
-};
+// enum kv_category {
+// 	SKPLIST_SMALL_INPLACE = 0,
+// 	SKPLIST_SMALL_INLOG,
+// 	SKPLIST_MEDIUM_INPLACE,
+// 	SKPLIST_MEDIUM_INLOG,
+// 	SKPLIST_BIG_INLOG,
+// 	SKPLIST_UNKNOWN_LOG_CATEGORY,
+// 	SKLIST_BIG_INPLACE
+// };
 
 enum kv_type { SKPLIST_KV_FORMAT = 19, SKPLIST_KV_PREFIX = 20 };
 
