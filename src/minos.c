@@ -489,6 +489,31 @@ uint8_t minos_iter_is_valid(struct minos_iterator *iter)
 	return iter->is_valid;
 }
 
+static inline bool minos_iter_check_iter_valid(struct minos_iterator *iter, uint32_t *size)
+{
+	return size && iter && minos_iter_is_valid(iter);
+}
+
+char *minos_iter_get_key(struct minos_iterator *iter, uint32_t *key_size)
+{
+	if (!minos_iter_check_iter_valid(iter, key_size)) {
+		*key_size = 0;
+		return NULL;
+	}
+	*key_size = iter->iter_node->kv->key_size;
+	return iter->iter_node->kv->key;
+}
+
+char *minos_iter_get_value(struct minos_iterator *iter, uint32_t *value_size)
+{
+	if (!minos_iter_check_iter_valid(iter, value_size)) {
+		*value_size = 0;
+		return NULL;
+	}
+	*value_size = iter->iter_node->kv->value_size;
+	return iter->iter_node->kv->key;
+}
+
 void minos_free(struct minos *skplist)
 {
 	struct minos_node *curr, *next_curr;

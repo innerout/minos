@@ -91,6 +91,8 @@ void minos_free(struct minos *skplist);
 void minos_iter_init(struct minos_iterator *iter, struct minos *skplist, uint32_t key_size, void *search_key);
 void minos_iter_seek_first(struct minos_iterator *iter, struct minos *skplist);
 void minos_iter_get_next(struct minos_iterator *iter);
+char *minos_iter_get_key(struct minos_iterator *iter, uint32_t *key_size);
+char *minos_iter_get_value(struct minos_iterator *iter, uint32_t *value_size);
 /*return 1 if valid 0 if not valid*/
 uint8_t minos_iter_is_valid(struct minos_iterator *iter);
 void minos_iter_close(struct minos_iterator *iter);
