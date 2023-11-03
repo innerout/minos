@@ -51,7 +51,7 @@ void test_minos(int num_pairs)
 		ins_req.key_size = strlen(ins_req.key);
 		ins_req.value = ins_req.key;
 		ins_req.value_size = ins_req.key_size;
-		ins_req.tombstone = 0;
+		// ins_req.tombstone = 0;
 
 		minos_insert(skiplist, &ins_req);
 

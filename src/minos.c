@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 /*FIXME this defines goes to parallax (already exists)*/
 #define RWLOCK_INIT(L, attr) pthread_rwlock_init(L, attr)
 #define RWLOCK_WRLOCK(L) pthread_rwlock_wrlock(L)
@@ -53,7 +54,7 @@ static struct minos_node *minos_create_node(struct minos_insert_request *ins_req
 	new_node->kv->value_size = ins_req->value_size;
 	memcpy(new_node->kv->key, ins_req->key, ins_req->key_size);
 	memcpy(new_node->kv->value, ins_req->value, ins_req->value_size);
-	new_node->tombstone = ins_req->tombstone;
+	// new_node->tombstone = ins_req->tombstone;
 	new_node->is_NIL = 0;
 
 	RWLOCK_INIT(&new_node->rw_nodelock, NULL);
@@ -77,6 +78,8 @@ static uint32_t minos_calc_level(struct minos *skplist)
 // skplist is an object called by reference
 struct minos *minos_init(void)
 {
+	int num_cores = sysconf(_SC_NPROCESSORS_ONLN);
+	log_info("There are %d cores in your system!", num_cores);
 #ifdef RELEASE_BUILD
 	log_set_level(LOG_INFO);
 #endif

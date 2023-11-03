@@ -38,7 +38,7 @@ struct minos_node {
 	pthread_rwlock_t rw_nodelock;
 	struct node_data *kv;
 	uint32_t level;
-	uint8_t tombstone;
+	// uint8_t tombstone;
 	uint8_t is_NIL;
 };
 
@@ -53,7 +53,7 @@ struct minos_insert_request {
 	uint32_t value_size;
 	void *key;
 	void *value;
-	uint8_t tombstone : 1;
+	// uint8_t tombstone : 1;
 };
 
 typedef int (*minos_comparator)(void *key1, void *key2, uint32_t keysize1, uint32_t keysize2);

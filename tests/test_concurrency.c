@@ -10,7 +10,7 @@
 
 #define KVS_NUM 1000000
 #define KV_PREFIX "ts"
-#define NUM_OF_THREADS 1
+#define NUM_OF_THREADS 8
 
 struct thread_info {
 	pthread_t th;
@@ -46,7 +46,7 @@ static void populate_skiplist_with_single_writer(struct minos *skplist)
 		ins_req.key = key;
 		ins_req.value = key;
 		ins_req.value_size = key_size;
-		ins_req.tombstone = 0;
+		// ins_req.tombstone = 0;
 		minos_insert(skplist, &ins_req);
 	}
 }
@@ -69,7 +69,7 @@ static void *populate_the_skiplist(void *args)
 		ins_req.key = key;
 		ins_req.value = key;
 		ins_req.value_size = key_size;
-		ins_req.tombstone = 0;
+		// ins_req.tombstone = 0;
 		minos_insert(concurrent_skiplist, &ins_req);
 		//print_skplist(&my_skiplist);
 	}
@@ -78,14 +78,14 @@ static void *populate_the_skiplist(void *args)
 
 static void validate_number_of_KVS(struct minos *skplist)
 {
-	int count;
+	int count = 0;
 	struct minos_node *curr = skplist->header;
 
 	while (curr->fwd_pointer[0] != skplist->NIL_element) {
 		curr = curr->fwd_pointer[0];
 		++count;
 	}
-	printf("Count is %d should be %d\n", count, KVS_NUM);
+	printf("Count is %d should be %d is it ok? %s\n", count, KVS_NUM, count == KVS_NUM ? "YES" : "NO");
 	assert(count == KVS_NUM); //-1 for the header node
 }
 static void print_each_level_size(struct minos *skplist)
