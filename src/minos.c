@@ -604,3 +604,19 @@ void minos_free(struct minos *skiplist)
 	free(curr);
 	free(skiplist);
 }
+
+struct minos_value minos_get_head_copy(struct minos *skiplist)
+{
+	minos_rd_lock(skiplist->level_locks[skiplist->header->level], (uint64_t)skiplist->header);
+	struct minos_value ret_val = {
+		.value_size = skiplist->header->fwd_pointer[0]->kv->value_size,
+	};
+	if (0 == ret_val.value_size)
+		goto exit;
+	ret_val.value = calloc(1UL, ret_val.value_size);
+	memcpy(ret_val.value, skiplist->header->fwd_pointer[0]->kv->value, ret_val.value_size);
+	ret_val.found = 1;
+exit:
+	minos_unlock(skiplist->level_locks[skiplist->header->level], (uint64_t)skiplist->header);
+	return ret_val;
+}

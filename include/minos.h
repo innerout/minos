@@ -97,6 +97,7 @@ void minos_change_comparator(struct minos *skiplist, minos_comparator comparator
 void minos_change_node_allocator(struct minos *skiplist,
 				 struct minos_node *make_node(struct minos_insert_request *ins_req));
 /*skiplist operations*/
+struct minos_value minos_get_head_copy(struct minos *skiplist);
 struct minos_value minos_search(struct minos *skiplist, uint32_t key_size, void *search_key);
 struct minos_value minos_seek(struct minos *skiplist, uint32_t key_size, void *search_key);
 void minos_insert(struct minos *skiplist, struct minos_insert_request *ins_req);
