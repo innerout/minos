@@ -11,4 +11,8 @@ if(BUILD_TESTING)
   add_executable(test_seek_equal_or_less test_seek_equal_or_less.c)
   target_link_libraries(test_seek_equal_or_less "${PROJECT_NAME}" log)
   add_test(NAME test_seek_equal_or_less COMMAND $<TARGET_FILE:test_seek_equal_or_less>)
+  
+  add_executable(test_updates test_updates.c)
+  target_link_libraries(test_updates "${PROJECT_NAME}" log)
+  add_test(NAME test_updates COMMAND $<TARGET_FILE:test_updates>)
 endif()

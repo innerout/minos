@@ -15,18 +15,22 @@ void *generate_populate_key(uint32_t *key_size)
 	char buffer[12] = { 0 }; // Large enough for a 32-bit integer
 	sprintf(buffer, "%u", counter);
 	counter += 2;
-
+	log_debug("Buffer len: %lu", strlen(buffer));
 	*key_size = strlen(buffer) + 1; // +1 for the null terminator
 	char *key = calloc(1UL, *key_size);
 	strcpy(key, buffer);
-	// log_debug("Created key: %s for insertion", key);
+	log_debug("Created key: %s for insertion of size: %u", key, *key_size);
 
 	return key;
 }
 
-void *generate_search_key(uint32_t *key_size)
+void *generate_search_key(uint32_t *key_size, bool reset)
 {
-	static uint32_t counter = COUNTER_START;
+	static uint32_t counter = COUNTER_START + 1;
+	if (reset) {
+		counter = COUNTER_START + 1;
+		return NULL;
+	}
 	char buffer[12] = { 0 }; // Large enough for a 32-bit integer
 	sprintf(buffer, "%u", counter);
 	counter += 2;
@@ -34,6 +38,7 @@ void *generate_search_key(uint32_t *key_size)
 	*key_size = strlen(buffer) + 1; // +1 for the null terminator
 	char *key = calloc(1UL, *key_size);
 	strcpy(key, buffer);
+	log_debug("Created key: %s for search of size: %u", key, *key_size);
 
 	return key;
 }
@@ -47,7 +52,7 @@ void test_minos(int num_pairs)
 	for (int i = 0; i < num_pairs; ++i) {
 		struct minos_insert_request ins_req;
 		ins_req.key = generate_populate_key(&ins_req.key_size);
-		ins_req.key_size = strlen(ins_req.key);
+		ins_req.key_size = ins_req.key_size;
 		ins_req.value = ins_req.key;
 		ins_req.value_size = ins_req.key_size;
 		// ins_req.tombstone = 0;
@@ -56,31 +61,37 @@ void test_minos(int num_pairs)
 
 		free(ins_req.key);
 	}
+	//update everything
+	for (int i = 0; i < num_pairs; ++i) {
+		struct minos_insert_request ins_req;
+		ins_req.key = generate_search_key(&ins_req.key_size, false);
+		ins_req.key_size = ins_req.key_size;
+		ins_req.value = "chatzimawlis";
+		ins_req.value_size = strlen("chatzimawlis");
 
+		minos_insert(skiplist, &ins_req);
+
+		free(ins_req.key);
+	}
+	generate_search_key(NULL, true);
 	// Test random keys with minos_seek_equal_or_less
-	for (int i = 0; i < num_pairs + 1; ++i) {
+	for (int i = 0; i < num_pairs; ++i) {
 		uint32_t search_key_size;
-		char *search_key = generate_search_key(&search_key_size);
+		char *search_key = generate_search_key(&search_key_size, false);
 		log_debug("<seek no: %d>", i);
-		struct minos_value result = minos_seek(skiplist, search_key_size, search_key);
+		struct minos_value result = minos_search(skiplist, search_key_size, search_key);
 		int ret = -1;
-		if (result.found) {
-			log_debug("Jackpot got exact match");
-			free(search_key);
-			continue;
-		}
-		log_debug("Result value size: %u pointer: %p", result.value_size, result.value);
-		ret = memcmp(result.value, search_key,
-			     search_key_size < result.value_size ? search_key_size : result.value_size);
-		if (0 == ret)
-			ret = result.value_size - search_key_size;
-		if (ret > 0) {
-			log_fatal("Failure! land on a key: %.*s that is equal or less of the search key: %.*s",
-				  result.value_size, (char *)result.value, search_key_size, search_key);
+		if (!result.found) {
+			log_fatal("FATAL key %.*s not found", search_key_size, search_key);
 			_exit(EXIT_FAILURE);
 		}
-		log_debug("Correct! land on a key: %.*s that is equal or less of the search key: %.*s",
-			  result.value_size, (char *)result.value, search_key_size, search_key);
+		log_debug("Result value size: %u pointer: %p", result.value_size, result.value);
+		if (result.value_size != strlen("chatzimawlis") ||
+		    0 != memcmp(result.value, "chatzimawlis", result.value_size)) {
+			log_fatal("Failure! value: %.*s corrupted should have been chatzimawlis ", result.value_size,
+				  (char *)result.value);
+			_exit(EXIT_FAILURE);
+		}
 
 		log_debug("</seek>");
 		free(search_key);

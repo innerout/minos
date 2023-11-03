@@ -1,5 +1,5 @@
 #include <assert.h>
-#include <bits/pthreadtypes.h>
+#include <limits.h>
 #include <log.h>
 #include <minos.h>
 #include <pthread.h>
@@ -62,16 +62,12 @@ static uint32_t minos_random_level()
 	return i;
 }
 
-static int default_skiplist_comparator(void *key1, void *key2, uint32_t keysize1, uint32_t keysize2)
+static int minos_default_comparator(void *key1, void *key2, uint32_t keysize1, uint32_t keysize2)
 {
 	int ret = memcmp(key1, key2, keysize1 < keysize2 ? keysize1 : keysize2);
-	log_debug("Comparing key: %.*s with key %.*s result is %d\n", keysize1, (char *)key1, keysize2, (char *)key2,
-		  ret);
-
-	if (ret != 0) {
-		return ret;
-	}
-	return keysize1 - keysize2;
+	// log_debug("Comparing key: %.*s with key %.*s result is %d keysize1: %u keysize2: %u\n", keysize1, (char *)key1,
+	// 	  keysize2, (char *)key2, ret, keysize1, keysize2);
+	return ret ? ret : keysize1 - keysize2;
 }
 
 static struct minos_node *minos_create_node(struct minos_insert_request *ins_req)
@@ -146,7 +142,7 @@ struct minos *minos_init(void)
 	for (int i = 0; i < SKIPLIST_MAX_LEVELS; i++)
 		skplist->header->fwd_pointer[i] = skplist->NIL_element;
 
-	skplist->comparator = default_skiplist_comparator;
+	skplist->comparator = minos_default_comparator;
 	skplist->make_node = minos_create_node;
 
 	return skplist;
@@ -168,11 +164,12 @@ void minos_change_node_allocator(struct minos *skplist,
 static struct minos_value minos_search_internal(struct minos *skiplist, uint32_t search_key_size, void *search_key,
 						bool is_seek)
 {
-	int ret;
+	int ret = INT_MAX;
 
 	struct minos_node *curr, *next_curr;
-	minos_rd_lock(skiplist->level_locks[skiplist->header->level], (uint64_t)skiplist->header);
 	// RWLOCK_RDLOCK(&skiplist->header->rw_nodelock);
+	minos_rd_lock(skiplist->level_locks[skiplist->header->level], (uint64_t)skiplist->header);
+
 	curr = skiplist->header;
 	//replace this with the hint level
 	uint32_t levels;
@@ -205,7 +202,7 @@ static struct minos_value minos_search_internal(struct minos *skiplist, uint32_t
 	//we are infront of the node at level 0, node is locked
 	//corner case
 	//next element for level 0 is sentinel, key not found
-	ret = 1;
+	// ret = 1;
 	if (!curr->fwd_pointer[0]->is_NIL) {
 		// ret = memcmp(curr->fwd_pointer[0]->kv->key, search_key,
 		// 	     curr->fwd_pointer[0]->kv->key_size < search_key_size ? curr->fwd_pointer[0]->kv->key_size :
@@ -217,10 +214,13 @@ static struct minos_value minos_search_internal(struct minos *skiplist, uint32_t
 	struct minos_value ret_val = { 0 };
 	if (ret == 0 || is_seek) {
 		ret_val.found = (ret == 0);
-		if (curr->is_NIL || curr == skiplist->header) {
+		if (is_seek && (curr->is_NIL || curr == skiplist->header)) {
 			log_debug("Boom NIL");
 			goto exit;
 		}
+		if (curr == skiplist->header)
+			curr = curr->fwd_pointer[0];
+
 		ret_val.value_size = curr->kv->value_size;
 		ret_val.value = calloc(1UL, ret_val.value_size);
 		memcpy(ret_val.value, curr->kv->value, ret_val.value_size);
