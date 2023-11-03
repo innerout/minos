@@ -4,7 +4,7 @@
 extern "C" {
 #endif
 
-#define SKPLIST_MAX_LEVELS 12 //this variable will be at conf file. It shows the max_levels of the skiplist
+#define SKIPLIST_MAX_LEVELS 12 //this variable will be at conf file. It shows the max_levels of the skiplist
 //it should be allocated according to L0 size
 #include <pthread.h>
 #include <stdbool.h>
@@ -14,16 +14,16 @@ extern "C" {
  * IMPORTANT: the *_INLOG choices should not be used for in-memory staff!
 */
 // enum kv_category {
-// 	SKPLIST_SMALL_INPLACE = 0,
-// 	SKPLIST_SMALL_INLOG,
-// 	SKPLIST_MEDIUM_INPLACE,
-// 	SKPLIST_MEDIUM_INLOG,
-// 	SKPLIST_BIG_INLOG,
-// 	SKPLIST_UNKNOWN_LOG_CATEGORY,
+// 	skiplist_SMALL_INPLACE = 0,
+// 	skiplist_SMALL_INLOG,
+// 	skiplist_MEDIUM_INPLACE,
+// 	skiplist_MEDIUM_INLOG,
+// 	skiplist_BIG_INLOG,
+// 	skiplist_UNKNOWN_LOG_CATEGORY,
 // 	SKLIST_BIG_INPLACE
 // };
 
-enum kv_type { SKPLIST_KV_FORMAT = 19, SKPLIST_KV_PREFIX = 20 };
+enum kv_type { skiplist_KV_FORMAT = 19, skiplist_KV_PREFIX = 20 };
 
 struct node_data {
 	uint32_t key_size;
@@ -34,7 +34,7 @@ struct node_data {
 
 struct minos_node {
 	/*for parallax use*/
-	struct minos_node *fwd_pointer[SKPLIST_MAX_LEVELS];
+	struct minos_node *fwd_pointer[SKIPLIST_MAX_LEVELS];
 	pthread_rwlock_t rw_nodelock;
 	struct node_data *kv;
 	uint32_t level;
@@ -56,6 +56,9 @@ struct minos_insert_request {
 	uint8_t tombstone : 1;
 };
 
+typedef int (*minos_comparator)(void *key1, void *key2, uint32_t keysize1, uint32_t keysize2);
+typedef struct minos_node *(*minos_make_node)(struct minos_insert_request *ins_req);
+
 struct minos {
 	uint32_t level; //this variable will be used as the level hint
 	struct minos_node *header;
@@ -64,10 +67,9 @@ struct minos {
 	 * > 0 if key1 > key2
 	 * < 0 key2 > key1
 	 * 0 if key1 == key2 */
-	int (*comparator)(void *key1, void *key2, char key1_format, char key2_format);
-
+	minos_comparator comparator;
 	/* generic node allocator */
-	struct minos_node *(*make_node)(struct minos_insert_request *ins_req);
+	minos_make_node make_node;
 };
 
 struct minos_value {
@@ -77,19 +79,19 @@ struct minos_value {
 };
 
 struct minos *minos_init(void);
-void minos_change_comparator(struct minos *skplist,
-			     int (*comparator)(void *key1, void *key2, char key1_format, char key2_format));
+void minos_change_comparator(struct minos *skiplist, minos_comparator comparator);
 
-void minos_change_node_allocator(struct minos *skplist,
+void minos_change_node_allocator(struct minos *skiplist,
 				 struct minos_node *make_node(struct minos_insert_request *ins_req));
 /*skiplist operations*/
-struct minos_value minos_search(struct minos *skplist, uint32_t key_size, void *search_key);
-void minos_insert(struct minos *skplist, struct minos_insert_request *ins_req);
-bool minos_delete(struct minos *skplist, const char *key, uint32_t key_size); //TBI
-void minos_free(struct minos *skplist);
+struct minos_value minos_search(struct minos *skiplist, uint32_t key_size, void *search_key);
+struct minos_value minos_seek(struct minos *skiplist, uint32_t key_size, void *search_key);
+void minos_insert(struct minos *skiplist, struct minos_insert_request *ins_req);
+bool minos_delete(struct minos *skiplist, const char *key, uint32_t key_size); //TBI
+void minos_free(struct minos *skiplist);
 /*iterators staff*/
-void minos_iter_init(struct minos_iterator *iter, struct minos *skplist, uint32_t key_size, void *search_key);
-void minos_iter_seek_first(struct minos_iterator *iter, struct minos *skplist);
+void minos_iter_init(struct minos_iterator *iter, struct minos *skiplist, uint32_t key_size, void *search_key);
+void minos_iter_seek_first(struct minos_iterator *iter, struct minos *skiplist);
 void minos_iter_get_next(struct minos_iterator *iter);
 char *minos_iter_get_key(struct minos_iterator *iter, uint32_t *key_size);
 char *minos_iter_get_value(struct minos_iterator *iter, uint32_t *value_size);

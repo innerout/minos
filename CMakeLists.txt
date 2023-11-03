@@ -5,6 +5,18 @@ project(
   VERSION 1.0.0
   LANGUAGES C CXX)
 
+option(USE_SANITIZER "Use sanitizer: Address, Thread, Memory, Undefined" "")
+
+# Add sanitizer options if enabled
+if(USE_SANITIZER)
+  if(USE_SANITIZER STREQUAL "Address")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address")
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fsanitize=address")
+  endif()
+endif()
+
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_C_CLANG_TIDY "")
 option(BUILD_SHARED_LIBS
@@ -27,6 +39,9 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   # Set the possible values of build type for cmake-gui
   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release"
                                                "MinSizeRel" "RelWithDebInfo")
+endif()
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+  add_definitions(-DRELEASE_BUILD)
 endif()
 
 include(FetchContent)
@@ -60,7 +75,7 @@ target_include_directories(
 
 set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME minos
                                                  CLEAN_DIRECT_OUTPUT 1)
-target_link_libraries(${PROJECT_NAME} PRIVATE Threads::Threads)
+target_link_libraries(${PROJECT_NAME} PRIVATE Threads::Threads log)
 
 find_program(iwyu_path NAMES include-what-you-use iwyu iwyu-tool)
 if(iwyu_path)
@@ -78,6 +93,22 @@ install(
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(DIRECTORY include/ DESTINATION include)
 install(EXPORT minos DESTINATION share/${PROJECT_NAME}/cmake)
+
+
+set(FETCHCONTENT_QUIET FALSE)
+FetchContent_Declare(
+  log
+  GIT_REPOSITORY https://github.com/innerout/log.c.git
+  GIT_PROGRESS TRUE)
+FetchContent_GetProperties(log)
+if(NOT log_POPULATED)
+  FetchContent_Populate(log)
+  add_subdirectory(${log_SOURCE_DIR} ${log_BINARY_DIR})
+  FetchContent_MakeAvailable(log)
+endif()
+
+
+
 
 export(TARGETS ${PROJECT_NAME} FILE ${PROJECT_NAME}.cmake)
 

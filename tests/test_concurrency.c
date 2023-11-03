@@ -21,7 +21,7 @@ struct minos *concurrent_skiplist;
 static void print_skplist(struct minos *skplist)
 {
 	struct minos_node *curr;
-	for (int i = 0; i < SKPLIST_MAX_LEVELS; i++) {
+	for (int i = 0; i < SKIPLIST_MAX_LEVELS; i++) {
 		curr = skplist->header;
 		printf("keys at level %d -> ", i);
 		while (!curr->is_NIL) {
@@ -92,7 +92,7 @@ static void print_each_level_size(struct minos *skplist)
 {
 	uint64_t count, i;
 	struct minos_node *curr;
-	for (i = 0; i < SKPLIST_MAX_LEVELS; i++) {
+	for (i = 0; i < SKIPLIST_MAX_LEVELS; i++) {
 		count = 0;
 		curr = skplist->header;
 
