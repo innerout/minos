@@ -23,7 +23,7 @@ target_link_libraries(YOUR_LIB_NAME minos)
 ## Build, Testing and Installation
 
 ``` sh
-cd CS527_skiplist
+cd minos
 mkdir build;cd build
 cmake ..
 make
