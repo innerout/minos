@@ -49,6 +49,7 @@ static void populate_skiplist_with_single_writer(struct minos *skplist)
 		// ins_req.tombstone = 0;
 		minos_insert(skplist, &ins_req);
 	}
+	free(key);
 }
 
 static void *populate_the_skiplist(void *args)
@@ -73,6 +74,7 @@ static void *populate_the_skiplist(void *args)
 		minos_insert(concurrent_skiplist, &ins_req);
 		//print_skplist(&my_skiplist);
 	}
+	free(key);
 	pthread_exit(NULL);
 }
 
@@ -115,8 +117,7 @@ static void compare_the_lists(struct minos *clist, struct minos *swlist)
 	swcurr = swlist->header->fwd_pointer[0]; //skip the header, start from the first key
 
 	while (swcurr->fwd_pointer[0] != swlist->NIL_element) {
-		int key_size = strlen(swcurr->kv->key) > strlen(ccurr->kv->key) ? strlen(swcurr->kv->key) :
-										  strlen(ccurr->kv->key);
+		int key_size = swcurr->kv->key_size > ccurr->kv->key_size ? swcurr->kv->key_size : ccurr->kv->key_size;
 		ret = memcmp(swcurr->kv->key, ccurr->kv->key, key_size);
 		if (ret == 0) { //all good step
 			swcurr = swcurr->fwd_pointer[0];
@@ -134,9 +135,7 @@ int main()
 	srand(time(0));
 	int i;
 	struct thread_info thread_buf[NUM_OF_THREADS];
-	struct minos *skiplist_single_writer;
-
-	skiplist_single_writer = minos_init();
+	struct minos *skiplist_single_writer = minos_init();
 	concurrent_skiplist = minos_init();
 
 	populate_skiplist_with_single_writer(skiplist_single_writer);
@@ -147,12 +146,14 @@ int main()
 		pthread_create(&thread_buf[i].th, NULL, populate_the_skiplist, thread_buf[i].tid);
 	}
 
-	for (i = 0; i < NUM_OF_THREADS; i++)
+	for (i = 0; i < NUM_OF_THREADS; i++) {
 		pthread_join(thread_buf[i].th, NULL);
+		free(thread_buf[i].tid);
+	}
 
 	compare_the_lists(concurrent_skiplist, skiplist_single_writer);
 	validate_number_of_KVS(concurrent_skiplist);
 
-	minos_free(concurrent_skiplist);
 	minos_free(skiplist_single_writer);
+	minos_free(concurrent_skiplist);
 }

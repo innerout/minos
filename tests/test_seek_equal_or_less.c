@@ -85,6 +85,7 @@ void test_minos(int num_pairs)
 
 		log_debug("</seek>");
 		free(search_key);
+		free(result.value);
 	}
 	log_info("SUCCESS!");
 	minos_free(skiplist);

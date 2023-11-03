@@ -1,5 +1,6 @@
 #ifndef MINOS_H
 #define MINOS_H
+// #include <bits/pthreadtypes.h>
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -23,29 +24,32 @@ extern "C" {
 // 	SKLIST_BIG_INPLACE
 // };
 
-enum kv_type { skiplist_KV_FORMAT = 19, skiplist_KV_PREFIX = 20 };
+struct minos_lock {
+	pthread_rwlock_t lock;
+	char pad[8];
+};
 
-struct node_data {
+struct minos_lock_table {
+	uint32_t size;
+	struct minos_lock locks[];
+};
+
+struct minos_node_data {
 	uint32_t key_size;
 	uint32_t value_size;
 	void *key;
 	void *value;
 };
 
+typedef void *minos_lock_t;
 struct minos_node {
-	/*for parallax use*/
 	struct minos_node *fwd_pointer[SKIPLIST_MAX_LEVELS];
-	pthread_rwlock_t rw_nodelock;
-	struct node_data *kv;
+	// pthread_rwlock_t rw_nodelock;
+	minos_lock_t node_lock;
+	struct minos_node_data *kv;
 	uint32_t level;
 	// uint8_t tombstone;
 	uint8_t is_NIL;
-};
-
-struct minos_iterator {
-	pthread_rwlock_t rw_iterlock;
-	struct minos_node *iter_node;
-	uint8_t is_valid;
 };
 
 struct minos_insert_request {
@@ -63,6 +67,8 @@ struct minos {
 	uint32_t level; //this variable will be used as the level hint
 	struct minos_node *header;
 	struct minos_node *NIL_element; //last element of the skip list
+	struct minos_lock_table *level_locks[SKIPLIST_MAX_LEVELS];
+
 	/* a generic key comparator, comparator should return:
 	 * > 0 if key1 > key2
 	 * < 0 key2 > key1
@@ -70,6 +76,13 @@ struct minos {
 	minos_comparator comparator;
 	/* generic node allocator */
 	minos_make_node make_node;
+};
+
+struct minos_iterator {
+	pthread_rwlock_t rw_iterlock;
+	struct minos_node *iter_node;
+	struct minos *skiplist;
+	uint8_t is_valid;
 };
 
 struct minos_value {
