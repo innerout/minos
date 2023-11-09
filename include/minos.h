@@ -31,7 +31,7 @@ struct minos_lock {
 
 struct minos_lock_table {
 	uint32_t size;
-	struct minos_lock locks[];
+	struct minos_lock *locks;
 };
 
 struct minos_node_data {

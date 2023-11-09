@@ -23,8 +23,8 @@ pthread_mutex_t levels_lock_buf[SKIPLIST_MAX_LEVELS];
 
 static struct minos_lock_table *minos_init_lock_table(uint32_t size)
 {
-	struct minos_lock_table *lock_table =
-		calloc(1UL, sizeof(struct minos_lock_table) + size * sizeof(struct minos_lock));
+	struct minos_lock_table *lock_table = calloc(1UL, sizeof(struct minos_lock_table));
+	lock_table->locks = calloc(size, sizeof(struct minos_lock));
 	lock_table->size = size;
 	for (uint32_t i = 0; i < lock_table->size; i++)
 		RWLOCK_INIT(&lock_table->locks[i].lock, NULL);
@@ -497,6 +497,7 @@ void minos_iter_init(struct minos_iterator *iter, struct minos *skiplist, uint32
  *this is trivial, acquire the rdlock of the first level0 node */
 void minos_iter_seek_first(struct minos_iterator *iter, struct minos *skiplist)
 {
+	iter->skiplist = skiplist;
 	struct minos_node *curr, *next_curr;
 	// RWLOCK_RDLOCK(&skplist->header->rw_nodelock);
 	minos_rd_lock(skiplist->level_locks[skiplist->header->level], (uint64_t)skiplist->header);
@@ -574,7 +575,7 @@ char *minos_iter_get_value(struct minos_iterator *iter, uint32_t *value_size)
 		return NULL;
 	}
 	*value_size = iter->iter_node->kv->value_size;
-	return iter->iter_node->kv->key;
+	return iter->iter_node->kv->value;
 }
 
 void minos_free(struct minos *skiplist)
