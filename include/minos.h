@@ -14,25 +14,16 @@ extern "C" {
  * users can define the category of their keys
  * IMPORTANT: the *_INLOG choices should not be used for in-memory staff!
 */
-// enum kv_category {
-// 	skiplist_SMALL_INPLACE = 0,
-// 	skiplist_SMALL_INLOG,
-// 	skiplist_MEDIUM_INPLACE,
-// 	skiplist_MEDIUM_INLOG,
-// 	skiplist_BIG_INLOG,
-// 	skiplist_UNKNOWN_LOG_CATEGORY,
-// 	SKLIST_BIG_INPLACE
+
+// struct minos_lock {
+// 	pthread_rwlock_t lock;
+// 	char pad[8];
 // };
 
-struct minos_lock {
-	pthread_rwlock_t lock;
-	char pad[8];
-};
-
-struct minos_lock_table {
-	uint32_t size;
-	struct minos_lock *locks;
-};
+// struct minos_lock_table {
+// 	uint32_t size;
+// 	struct minos_lock *locks;
+// };
 
 struct minos_node_data {
 	uint32_t key_size;
@@ -44,11 +35,10 @@ struct minos_node_data {
 typedef void *minos_lock_t;
 struct minos_node {
 	struct minos_node *fwd_pointer[SKIPLIST_MAX_LEVELS];
-	// pthread_rwlock_t rw_nodelock;
+	pthread_rwlock_t rw_nodelock;
 	minos_lock_t node_lock;
 	struct minos_node_data *kv;
 	uint32_t level;
-	// uint8_t tombstone;
 	uint8_t is_NIL;
 };
 
