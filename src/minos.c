@@ -460,7 +460,7 @@ void minos_iter_init(struct minos_iterator *iter, struct minos *skiplist, uint32
 	//next element for level 0 is sentinel, key not found
 	if (!curr->fwd_pointer[0]->is_NIL) {
 		node_key_size = curr->fwd_pointer[0]->kv->key_size;
-		search_key_size = search_key_size > node_key_size ? search_key_size : node_key_size;
+		// search_key_size = search_key_size > node_key_size ? search_key_size : node_key_size;
 		// ret = memcmp(curr->fwd_pointer[0]->kv->key, search_key, search_key_size);
 		ret = skiplist->comparator(curr->fwd_pointer[0]->kv->key, search_key,
 					   curr->fwd_pointer[0]->kv->key_size, search_key_size);
