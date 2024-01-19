@@ -422,7 +422,8 @@ bool minos_delete(struct minos *skiplist, const char *key, uint32_t key_size)
  the write lock is needed)*/
 bool minos_iter_init(struct minos_iterator *iter, struct minos *skiplist, uint32_t search_key_size, void *search_key)
 {
-	int i, lvl;
+	int level_id;
+	int level;
 	iter->skiplist = skiplist;
 	struct minos_node *curr, *next_curr;
 	int node_key_size, ret;
@@ -430,27 +431,21 @@ bool minos_iter_init(struct minos_iterator *iter, struct minos *skiplist, uint32
 
 	curr = skiplist->header;
 	//replace this with the hint level
-	lvl = minos_calc_level(skiplist);
+	level = minos_calc_level(skiplist);
 
-	for (i = lvl; i >= 0; i--) {
-		next_curr = curr->fwd_pointer[i];
+	for (level_id = level; level_id >= 0; level_id--) {
+		next_curr = curr->fwd_pointer[level_id];
 		while (1) {
-			if (curr->fwd_pointer[i]->is_NIL) //reached sentinel for that level
+			if (curr->fwd_pointer[level_id]->is_NIL) //reached sentinel for that level
 				break;
-
-			// node_key_size = curr->fwd_pointer[i]->kv->key_size;
-			// if (node_key_size > key_size)
-			// 	ret = memcmp(curr->fwd_pointer[i]->kv->key, search_key, node_key_size);
-			// else
-			// 	ret = memcmp(curr->fwd_pointer[i]->kv->key, search_key, key_size);
-			ret = skiplist->comparator(curr->fwd_pointer[i]->kv->key, search_key,
-						   curr->fwd_pointer[i]->kv->key_size, search_key_size);
+			ret = skiplist->comparator(curr->fwd_pointer[level_id]->kv->key, search_key,
+						   curr->fwd_pointer[level_id]->kv->key_size, search_key_size);
 
 			if (ret < 0) {
 				minos_unlock(curr);
 				curr = next_curr;
 				minos_rd_lock(curr);
-				next_curr = curr->fwd_pointer[i];
+				next_curr = curr->fwd_pointer[level_id];
 			} else
 				break;
 		}
@@ -460,16 +455,15 @@ bool minos_iter_init(struct minos_iterator *iter, struct minos *skiplist, uint32
 	//corner case
 	//next element for level 0 is sentinel, key not found
 	if (!curr->fwd_pointer[0]->is_NIL) {
-		node_key_size = curr->fwd_pointer[0]->kv->key_size;
-		// search_key_size = search_key_size > node_key_size ? search_key_size : node_key_size;
-		// ret = memcmp(curr->fwd_pointer[0]->kv->key, search_key, search_key_size);
+		// node_key_size = curr->fwd_pointer[0]->kv->key_size;
 		ret = skiplist->comparator(curr->fwd_pointer[0]->kv->key, search_key,
 					   curr->fwd_pointer[0]->kv->key_size, search_key_size);
 	} else {
-		iter->is_valid = 0;
-		//RWLOCK_UNLOCK(&curr->rw_nodelock);
+		ret = skiplist->comparator(curr->kv->key, search_key,
+					   curr->kv->key_size, search_key_size);
+		iter->is_valid = ret < 0;
 		minos_unlock(curr);
-		return false;
+		return ret == 0;
 	}
 
 	if (ret == 0) {
