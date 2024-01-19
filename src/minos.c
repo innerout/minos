@@ -480,7 +480,6 @@ void minos_iter_init(struct minos_iterator *iter, struct minos *skiplist, uint32
 		// RWLOCK_UNLOCK(&curr->rw_nodelock);
 		minos_unlock(curr);
 	} else {
-		printf("search key for scan init not found\n");
 		iter->is_valid = 0;
 		minos_unlock(curr);
 	}
