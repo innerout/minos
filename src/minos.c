@@ -221,16 +221,16 @@ static struct minos_value minos_search_internal(struct minos *skiplist, uint32_t
 	struct minos_value ret_val = { 0 };
 	if (ret == 0 || is_seek) {
 		ret_val.found = (ret == 0);
-		if (is_seek && (curr->is_NIL || curr == skiplist->header)) {
+		if (is_seek && (curr->is_NIL)) {
 			log_debug("Boom NIL");
 			goto exit;
 		}
-		if (curr == skiplist->header)
+		if (ret ==0 || curr == skiplist->header)
 			curr = curr->fwd_pointer[0];
 
 		ret_val.value_size = curr->kv->value_size;
-		ret_val.value = calloc(1UL, ret_val.value_size);
-		memcpy(ret_val.value, curr->kv->value, ret_val.value_size);
+		ret_val.value = curr->kv->value;
+		// memcpy(ret_val.value, curr->kv->value, ret_val.value_size);
 		goto exit;
 	}
 exit:
@@ -450,34 +450,44 @@ bool minos_iter_init(struct minos_iterator *iter, struct minos *skiplist, uint32
 				break;
 		}
 	}
-  bool exact_match = ret == 0;
-	//we are infront of the node at level 0, node is locked
-	//corner case
-	//next element for level 0 is sentinel, key not found
-	if (!curr->fwd_pointer[0]->is_NIL) {
-		// node_key_size = curr->fwd_pointer[0]->kv->key_size;
-		ret = skiplist->comparator(curr->fwd_pointer[0]->kv->key, search_key,
-					   curr->fwd_pointer[0]->kv->key_size, search_key_size);
-	} else {
-		ret = skiplist->comparator(curr->kv->key, search_key,
-					   curr->kv->key_size, search_key_size);
-		iter->is_valid = ret < 0;
-		minos_unlock(curr);
-		return ret == 0;
-	}
 
-	if (ret == 0) {
-		iter->is_valid = 1;
-		iter->iter_node = curr->fwd_pointer[0];
-		/*lock iter_node unlock curr (remember curr is always behind the correct node)*/
-		minos_rd_lock(iter->iter_node);
-		// RWLOCK_UNLOCK(&curr->rw_nodelock);
-		minos_unlock(curr);
-	} else {
+	if (ret < 0 || curr->fwd_pointer[0]->is_NIL) {
 		iter->is_valid = 0;
-		minos_unlock(curr);
+		iter->iter_node = NULL;
+	} else {
+		iter->is_valid = 1;
+		iter->iter_node = iter->iter_node = curr->fwd_pointer[0];
 	}
-  return exact_match;
+  return ret == 0;
+
+ //  bool exact_match = ret == 0;
+	// //we are infront of the node at level 0, node is locked
+	// //corner case
+	// //next element for level 0 is sentinel, key not found
+	// if (!curr->fwd_pointer[0]->is_NIL) {
+	// 	// node_key_size = curr->fwd_pointer[0]->kv->key_size;
+	// 	ret = skiplist->comparator(curr->fwd_pointer[0]->kv->key, search_key,
+	// 				   curr->fwd_pointer[0]->kv->key_size, search_key_size);
+	// } else {
+	// 	ret = skiplist->comparator(curr->kv->key, search_key,
+	// 				   curr->kv->key_size, search_key_size);
+	// 	iter->is_valid = ret < 0;
+	// 	minos_unlock(curr);
+	// 	return ret == 0;
+	// }
+
+	// if (ret == 0) {
+	// 	iter->is_valid = 1;
+	// 	iter->iter_node = curr->fwd_pointer[0];
+	// 	/*lock iter_node unlock curr (remember curr is always behind the correct node)*/
+	// 	minos_rd_lock(iter->iter_node);
+	// 	// RWLOCK_UNLOCK(&curr->rw_nodelock);
+	// 	minos_unlock(curr);
+	// } else {
+	// 	iter->is_valid = 0;
+	// 	minos_unlock(curr);
+	// }
+ //  return exact_match;
 }
 
 /*initialize a scanner to the first key of the skiplist
