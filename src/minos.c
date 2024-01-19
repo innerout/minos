@@ -420,7 +420,7 @@ bool minos_delete(struct minos *skiplist, const char *key, uint32_t key_size)
 /*iterator will hold the readlock of the corresponding search_key's node.
  ! all the inserts/update operations are valid except the ones containing that node(because for such modifications
  the write lock is needed)*/
-int minos_iter_init(struct minos_iterator *iter, struct minos *skiplist, uint32_t search_key_size, void *search_key)
+bool minos_iter_init(struct minos_iterator *iter, struct minos *skiplist, uint32_t search_key_size, void *search_key)
 {
 	int i, lvl;
 	iter->skiplist = skiplist;
@@ -455,6 +455,7 @@ int minos_iter_init(struct minos_iterator *iter, struct minos *skiplist, uint32_
 				break;
 		}
 	}
+  bool exact_match = ret == 0;
 	//we are infront of the node at level 0, node is locked
 	//corner case
 	//next element for level 0 is sentinel, key not found
@@ -468,7 +469,7 @@ int minos_iter_init(struct minos_iterator *iter, struct minos *skiplist, uint32_
 		iter->is_valid = 0;
 		//RWLOCK_UNLOCK(&curr->rw_nodelock);
 		minos_unlock(curr);
-		return ret;
+		return false;
 	}
 
 	if (ret == 0) {
@@ -482,7 +483,7 @@ int minos_iter_init(struct minos_iterator *iter, struct minos *skiplist, uint32_
 		iter->is_valid = 0;
 		minos_unlock(curr);
 	}
-  return ret;
+  return exact_match;
 }
 
 /*initialize a scanner to the first key of the skiplist

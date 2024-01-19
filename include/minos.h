@@ -94,7 +94,7 @@ void minos_insert(struct minos *skiplist, struct minos_insert_request *ins_req);
 bool minos_delete(struct minos *skiplist, const char *key, uint32_t key_size); //TBI
 void minos_free(struct minos *skiplist);
 /*iterators staff*/
-int minos_iter_init(struct minos_iterator *iter, struct minos *skiplist, uint32_t key_size, void *search_key);
+bool minos_iter_init(struct minos_iterator *iter, struct minos *skiplist, uint32_t key_size, void *search_key);
 void minos_iter_seek_first(struct minos_iterator *iter, struct minos *skiplist);
 void minos_iter_get_next(struct minos_iterator *iter);
 char *minos_iter_get_key(struct minos_iterator *iter, uint32_t *key_size);
