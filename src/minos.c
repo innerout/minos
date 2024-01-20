@@ -392,7 +392,6 @@ bool minos_delete(struct minos *skiplist, const char *key, uint32_t key_size)
 			if (curr->fwd_pointer[i]->is_NIL == 1)
 				break; //reached sentinel
 
-			// ret = memcmp(curr->fwd_pointer[i]->kv->key, key, key_size);
 			ret = skiplist->comparator(curr->fwd_pointer[i]->kv->key, key,
 						   curr->fwd_pointer[i]->kv->key_size, key_size);
 			if (ret >= 0)
@@ -415,79 +414,43 @@ bool minos_delete(struct minos *skiplist, const char *key, uint32_t key_size)
 	return true;
 }
 
-/*iterators staff*/
-/*iterator is called by reference*/
-/*iterator will hold the readlock of the corresponding search_key's node.
- ! all the inserts/update operations are valid except the ones containing that node(because for such modifications
- the write lock is needed)*/
-bool minos_iter_init(struct minos_iterator *iter, struct minos *skiplist, uint32_t search_key_size, void *search_key)
+
+
+bool minos_iter_seek_equal_or_imm_less(struct minos_iterator *iter, struct minos *skiplist, uint32_t search_key_size,
+				       char *search_key, bool *exact_match)
 {
-	int level_id;
-	int level;
-	iter->skiplist = skiplist;
-	struct minos_node *curr, *next_curr;
-	int node_key_size, ret;
+  iter->skiplist = skiplist;
+	int ret = INT_MAX;
+
 	minos_rd_lock(skiplist->header);
+	struct minos_node *next_curr = NULL;
+	iter->iter_node = skiplist->header;
+	uint32_t max_level = minos_calc_level(skiplist);
 
-	curr = skiplist->header;
-	//replace this with the hint level
-	level = minos_calc_level(skiplist);
-
-	for (level_id = level; level_id >= 0; level_id--) {
-		next_curr = curr->fwd_pointer[level_id];
-		while (1) {
-			if (curr->fwd_pointer[level_id]->is_NIL) //reached sentinel for that level
-				break;
-			ret = skiplist->comparator(curr->fwd_pointer[level_id]->kv->key, search_key,
-						   curr->fwd_pointer[level_id]->kv->key_size, search_key_size);
-
+	for (int level_id = max_level; level_id >= 0; level_id--) {
+		next_curr = iter->iter_node->fwd_pointer[level_id];
+		while (!iter->iter_node->fwd_pointer[level_id]->is_NIL) {
+			ret = skiplist->comparator(iter->iter_node->fwd_pointer[level_id]->kv->key, search_key,
+						   iter->iter_node->fwd_pointer[level_id]->kv->key_size,
+						   search_key_size);
 			if (ret < 0) {
-				minos_unlock(curr);
-				curr = next_curr;
-				minos_rd_lock(curr);
-				next_curr = curr->fwd_pointer[level_id];
-			} else
-				break;
+				minos_unlock(iter->iter_node);
+				iter->iter_node = next_curr;
+				minos_rd_lock(iter->iter_node);
+				next_curr = iter->iter_node->fwd_pointer[level_id];
+				continue;
+			}
+			if (0 == ret) {
+				iter->iter_node = iter->iter_node->fwd_pointer[level_id];
+				*exact_match = true;
+        goto exit;
+			}
+			break;
 		}
 	}
-
-	if (ret < 0 || curr->fwd_pointer[0]->is_NIL) {
-		iter->is_valid = 0;
-		iter->iter_node = NULL;
-	} else {
-		iter->is_valid = 1;
-		iter->iter_node = iter->iter_node = curr->fwd_pointer[0];
-	}
-  return ret == 0;
-
- //  bool exact_match = ret == 0;
-	// //we are infront of the node at level 0, node is locked
-	// //corner case
-	// //next element for level 0 is sentinel, key not found
-	// if (!curr->fwd_pointer[0]->is_NIL) {
-	// 	// node_key_size = curr->fwd_pointer[0]->kv->key_size;
-	// 	ret = skiplist->comparator(curr->fwd_pointer[0]->kv->key, search_key,
-	// 				   curr->fwd_pointer[0]->kv->key_size, search_key_size);
-	// } else {
-	// 	ret = skiplist->comparator(curr->kv->key, search_key,
-	// 				   curr->kv->key_size, search_key_size);
-	// 	iter->is_valid = ret < 0;
-	// 	minos_unlock(curr);
-	// 	return ret == 0;
-	// }
-
-	// if (ret == 0) {
-	// 	iter->is_valid = 1;
-	// 	iter->iter_node = curr->fwd_pointer[0];
-	// 	/*lock iter_node unlock curr (remember curr is always behind the correct node)*/
-	// 	minos_rd_lock(iter->iter_node);
-	// 	// RWLOCK_UNLOCK(&curr->rw_nodelock);
-	// 	minos_unlock(curr);
-	// } else {
-	// 	iter->is_valid = 0;
-	// 	minos_unlock(curr);
-	// }
- //  return exact_match;
+exit:
+	iter->is_valid = (iter->iter_node == iter->skiplist->header) ? false : true;
+	return iter->is_valid;
 }
 
 /*initialize a scanner to the first key of the skiplist

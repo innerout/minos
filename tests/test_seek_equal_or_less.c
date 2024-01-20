@@ -9,27 +9,27 @@
 #define MAX_KEY_SIZE 256
 #define MAX_VALUE_SIZE 512
 #define COUNTER_START 1000000
+#define POPULATE_STEP 256
 void *generate_populate_key(uint32_t *key_size)
 {
-	static uint32_t counter = COUNTER_START + 1;
+	static uint32_t pop_counter = COUNTER_START + 1;
 	char buffer[12] = { 0 }; // Large enough for a 32-bit integer
-	sprintf(buffer, "%u", counter);
-	counter += 2;
+	sprintf(buffer, "%u", pop_counter);
+	pop_counter += POPULATE_STEP;
 
 	*key_size = strlen(buffer) + 1; // +1 for the null terminator
 	char *key = calloc(1UL, *key_size);
 	strcpy(key, buffer);
-	// log_debug("Created key: %s for insertion", key);
 
 	return key;
 }
 
 void *generate_search_key(uint32_t *key_size)
 {
-	static uint32_t counter = COUNTER_START;
+	static uint32_t read_counter = COUNTER_START;
 	char buffer[12] = { 0 }; // Large enough for a 32-bit integer
-	sprintf(buffer, "%u", counter);
-	counter += 2;
+	sprintf(buffer, "%u", read_counter);
+	read_counter += 1;
 
 	*key_size = strlen(buffer) + 1; // +1 for the null terminator
 	char *key = calloc(1UL, *key_size);
@@ -47,44 +47,49 @@ void test_minos(int num_pairs)
 	for (int i = 0; i < num_pairs; ++i) {
 		struct minos_insert_request ins_req;
 		ins_req.key = generate_populate_key(&ins_req.key_size);
-		ins_req.key_size = strlen(ins_req.key);
 		ins_req.value = ins_req.key;
 		ins_req.value_size = ins_req.key_size;
-		// ins_req.tombstone = 0;
 
+		log_debug("Created key: %s for insertion of size %u", (char *)ins_req.key, ins_req.key_size);
 		minos_insert(skiplist, &ins_req);
 
 		free(ins_req.key);
 	}
 
 	// Test random keys with minos_seek_equal_or_less
-	for (int i = 0; i < num_pairs + 1; ++i) {
+	for (int i = 0; i < num_pairs; ++i) {
 		uint32_t search_key_size;
 		char *search_key = generate_search_key(&search_key_size);
-		log_debug("<seek no: %d>", i);
-		struct minos_value result = minos_seek(skiplist, search_key_size, search_key);
+		log_debug("<seeking search key: %s of size %u>", search_key, search_key_size);
+		struct minos_iterator iter = { 0 };
+		bool exact_match = false;
+		bool valid =
+			minos_iter_seek_equal_or_imm_less(&iter, skiplist, search_key_size, search_key, &exact_match);
 		int ret = -1;
-		if (result.found) {
-			log_debug("Jackpot got exact match");
-			free(search_key);
-			continue;
-		}
-		log_debug("Result value size: %u pointer: %p", result.value_size, result.value);
-		ret = memcmp(result.value, search_key,
-			     search_key_size < result.value_size ? search_key_size : result.value_size);
-		if (0 == ret)
-			ret = result.value_size - search_key_size;
-		if (ret > 0) {
-			log_fatal("Failure! land on a key: %.*s that is equal or less of the search key: %.*s",
-				  result.value_size, (char *)result.value, search_key_size, search_key);
+		if (0 == i && valid) {
+			log_fatal("Oops valid? Search key: %*.s landed on key %.*s It shouldn't", search_key_size,
+				  search_key, iter.iter_node->kv->key_size, (char *)iter.iter_node->kv->key);
 			_exit(EXIT_FAILURE);
 		}
-		log_debug("Correct! land on a key: %.*s that is equal or less of the search key: %.*s",
-			  result.value_size, (char *)result.value, search_key_size, search_key);
-
-		log_debug("</seek>");
-		free(search_key);
-		free(result.value);
+		if (i & !valid) {
+			log_fatal("Oops no match for search key: %.*s? It shouldn't", search_key_size, search_key);
+			_exit(EXIT_FAILURE);
+		}
+		if (!valid)
+			continue;
+		ret = memcmp(search_key, iter.iter_node->kv->key,
+			     search_key_size < iter.iter_node->kv->key_size ? search_key_size :
+									      iter.iter_node->kv->key_size);
+		if (0 == ret)
+			ret = search_key_size - iter.iter_node->kv->key_size;
+		if (ret < 0) {
+			log_fatal("Iter found key %s that is less than search key %s", iter.iter_node->kv->key,
+				  search_key);
+			_exit(EXIT_FAILURE);
+		}
+		if (0 == ret) {
+			log_warn("Exact match nice!");
+		}
 	}
 	log_info("SUCCESS!");
 	minos_free(skiplist);
