@@ -484,7 +484,6 @@ void minos_iter_get_next(struct minos_iterator *iter)
 	if (iter->is_valid == 1) {
 		struct minos_node *next_node = iter->iter_node->fwd_pointer[0];
 		if (next_node->is_NIL) {
-			printf("Reached end of the skplist\n");
 			iter->is_valid = 0;
 			return;
 		}
