@@ -82,6 +82,7 @@ struct minos_value {
 };
 
 struct minos *minos_init(void);
+bool minos_is_empty(struct minos *minos);
 void minos_change_comparator(struct minos *skiplist, minos_comparator comparator);
 
 void minos_change_node_allocator(struct minos *skiplist,

@@ -155,6 +155,11 @@ struct minos *minos_init(void)
 	return skplist;
 }
 
+inline bool minos_is_empty(struct minos *minos)
+{
+  return minos->header->fwd_pointer[0]->is_NIL;
+}
+
 void minos_change_comparator(struct minos *skplist, minos_comparator comparator)
 {
 	assert(skplist != NULL);

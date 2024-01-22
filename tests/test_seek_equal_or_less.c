@@ -42,6 +42,7 @@ void *generate_search_key(uint32_t *key_size)
 void test_minos(int num_pairs)
 {
 	struct minos *skiplist = minos_init();
+	fprintf(stderr, "Is minos empty?: %s\n", minos_is_empty(skiplist) ? "YES" : "NO");
 
 	// Insert random key-value pairs
 	for (int i = 0; i < num_pairs; ++i) {
@@ -55,6 +56,7 @@ void test_minos(int num_pairs)
 
 		free(ins_req.key);
 	}
+	fprintf(stderr, "Is minos empty?: %s\n", minos_is_empty(skiplist) ? "YES" : "NO");
 
 	// Test random keys with minos_seek_equal_or_less
 	for (int i = 0; i < num_pairs; ++i) {
