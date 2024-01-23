@@ -542,16 +542,17 @@ char *minos_iter_get_value(struct minos_iterator *iter, uint32_t *value_size)
 	return iter->iter_node->kv->value;
 }
 
-bool minos_free(struct minos *skiplist, callback process, void *cnxt)
+uint32_t minos_free(struct minos *skiplist, callback process, void *cnxt)
 {
 	struct minos_node *curr = skiplist->header;
-
+  uint32_t items_freed = 0;
 	while (!curr->is_NIL) {
 		struct minos_node *next_curr = curr->fwd_pointer[0];
 		// log_info("Freeing %lu", curr);
 		if (curr->kv) {
 			if (process)
 				(*process)(curr->kv->value, cnxt);
+      items_freed++;
 			free(curr->kv->key);
 			free(curr->kv->value);
 			free(curr->kv);
@@ -563,13 +564,14 @@ bool minos_free(struct minos *skiplist, callback process, void *cnxt)
 	if (curr->kv) {
 		if (process)
 			(*process)(curr->kv->value, cnxt);
+    items_freed++;
 		free(curr->kv->key);
 		free(curr->kv->value);
 		free(curr->kv);
 	}
 	free(curr);
 	free(skiplist);
-	return true;
+	return items_freed;
 }
 
 struct minos_value minos_get_head_copy(struct minos *skiplist)

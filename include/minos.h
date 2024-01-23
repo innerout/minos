@@ -95,7 +95,7 @@ void minos_insert(struct minos *skiplist, struct minos_insert_request *ins_req);
 bool minos_delete(struct minos *skiplist, const char *key, uint32_t key_size); //TBI
 
 typedef bool (*callback)(void *value, void *cnxt);
-bool minos_free(struct minos *skiplist, callback process, void *cnxt);
+uint32_t minos_free(struct minos *skiplist, callback process, void *cnxt);
 /*iterators staff*/
 bool minos_iter_seek_equal_or_imm_less(struct minos_iterator *iter, struct minos *skiplist, uint32_t key_size,
 				       char *search_key, bool *exact_match);
