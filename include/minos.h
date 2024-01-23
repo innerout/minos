@@ -57,7 +57,7 @@ struct minos {
 	uint32_t level; //this variable will be used as the level hint
 	struct minos_node *header;
 	struct minos_node *NIL_element; //last element of the skip list
-	struct minos_lock_table *level_locks[SKIPLIST_MAX_LEVELS];
+	// struct minos_lock_table *level_locks[SKIPLIST_MAX_LEVELS];
 
 	/* a generic key comparator, comparator should return:
 	 * > 0 if key1 > key2
@@ -93,7 +93,9 @@ struct minos_value minos_search(struct minos *skiplist, uint32_t key_size, void 
 struct minos_value minos_seek(struct minos *skiplist, uint32_t key_size, void *search_key);
 void minos_insert(struct minos *skiplist, struct minos_insert_request *ins_req);
 bool minos_delete(struct minos *skiplist, const char *key, uint32_t key_size); //TBI
-void minos_free(struct minos *skiplist);
+
+typedef bool (*callback)(void *value, void *cnxt);
+bool minos_free(struct minos *skiplist, callback process, void *cnxt);
 /*iterators staff*/
 bool minos_iter_seek_equal_or_imm_less(struct minos_iterator *iter, struct minos *skiplist, uint32_t key_size,
 				       char *search_key, bool *exact_match);

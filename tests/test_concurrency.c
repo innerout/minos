@@ -154,6 +154,6 @@ int main()
 	compare_the_lists(concurrent_skiplist, skiplist_single_writer);
 	validate_number_of_KVS(concurrent_skiplist);
 
-	minos_free(skiplist_single_writer);
-	minos_free(concurrent_skiplist);
+	minos_free(skiplist_single_writer, NULL, NULL);
+	minos_free(concurrent_skiplist, NULL, NULL);
 }

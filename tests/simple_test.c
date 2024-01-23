@@ -169,5 +169,5 @@ int main()
 		pthread_join(thread_buf[i].th, NULL);
 
 	validate_number_of_kvs_with_iterators();
-	minos_free(my_skiplist);
+	minos_free(my_skiplist, NULL, NULL);
 }

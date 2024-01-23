@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#define DISABLE_LOCKS 0
+#define DISABLE_LOCKS 1
 /*FIXME this defines goes to parallax (already exists)*/
 #define RWLOCK_INIT(L, attr) pthread_rwlock_init(L, attr)
 #define RWLOCK_WRLOCK(L) pthread_rwlock_wrlock(L)
@@ -40,7 +40,7 @@ pthread_mutex_t levels_lock_buf[SKIPLIST_MAX_LEVELS];
 static inline void minos_rd_lock(struct minos_node *node)
 {
 #if DISABLE_LOCKS
-	return
+	return;
 #else
 	RWLOCK_RDLOCK(&node->rw_nodelock);
 #endif
@@ -49,18 +49,18 @@ static inline void minos_rd_lock(struct minos_node *node)
 static inline void minos_wr_lock(struct minos_node *node)
 {
 #if DISABLE_LOCKS
-	return
+	return;
 #else
-		RWLOCK_WRLOCK(&node->rw_nodelock);
+	RWLOCK_WRLOCK(&node->rw_nodelock);
 #endif
 }
 
 static inline void minos_unlock(struct minos_node *node)
 {
 #if DISABLE_LOCKS
-	return
+	return;
 #else
-		RWLOCK_UNLOCK(&node->rw_nodelock);
+	RWLOCK_UNLOCK(&node->rw_nodelock);
 #endif
 }
 
@@ -121,8 +121,8 @@ static uint32_t minos_calc_level(struct minos *skplist)
 struct minos *minos_init(void)
 {
 	int num_cores = sysconf(_SC_NPROCESSORS_ONLN);
-	log_debug("There are %d cores in your system! size of pthread_rwlock_t is %lu", num_cores,
-		  sizeof(pthread_rwlock_t));
+	// log_debug("There are %d cores in your system! size of pthread_rwlock_t is %lu", num_cores,
+	// 	  sizeof(pthread_rwlock_t));
 #ifdef RELEASE_BUILD
 	log_set_level(LOG_INFO);
 #endif
@@ -157,7 +157,8 @@ struct minos *minos_init(void)
 
 inline bool minos_is_empty(struct minos *minos)
 {
-  return minos->header->fwd_pointer[0]->is_NIL;
+  // log_debug("Skip list height: %u",minos_calc_level(minos));
+	return minos->header->fwd_pointer[0]->is_NIL;
 }
 
 void minos_change_comparator(struct minos *skplist, minos_comparator comparator)
@@ -230,7 +231,7 @@ static struct minos_value minos_search_internal(struct minos *skiplist, uint32_t
 			log_debug("Boom NIL");
 			goto exit;
 		}
-		if (ret ==0 || curr == skiplist->header)
+		if (ret == 0 || curr == skiplist->header)
 			curr = curr->fwd_pointer[0];
 
 		ret_val.value_size = curr->kv->value_size;
@@ -258,6 +259,7 @@ struct minos_value minos_seek(struct minos *skiplist, uint32_t search_key_size, 
 static struct minos_node *getLock(struct minos *skiplist, struct minos_node *curr, struct minos_insert_request *ins_req,
 				  int lvl)
 {
+
 	//see if we can advance further due to parallel modifications
 	//first proceed with read locks, then acquire write locks
 	/*Weak serach will be implemented later(performance issues)*/
@@ -297,7 +299,7 @@ void minos_insert(struct minos *skiplist, struct minos_insert_request *ins_req)
 {
 	int i, ret;
 	uint32_t node_key_size, lvl;
-	struct minos_node *update_vector[SKIPLIST_MAX_LEVELS];
+	struct minos_node *update_vector[SKIPLIST_MAX_LEVELS] = {0};
 	struct minos_node *curr, *next_curr;
 	minos_rd_lock(skiplist->header);
 	curr = skiplist->header;
@@ -370,31 +372,33 @@ void minos_insert(struct minos *skiplist, struct minos_insert_request *ins_req)
 }
 
 //update_vector is an array of size SKPLIST_MAX_LEVELS
-static void minos_delete_key(struct minos *skplist, struct minos_node **update_vector, struct minos_node *curr)
+static void minos_delete_key(struct minos *skiplist, struct minos_node **update_vector, struct minos_node *curr)
 {
-	int i;
-	for (i = 0; i <= skplist->level; i++) {
-		if (update_vector[i]->fwd_pointer[i] != curr)
+  int max_level = minos_calc_level(skiplist);
+	for (int i = 0; i <= max_level; i++) {
+    if(NULL == update_vector[i])
+      continue;
+		if (update_vector[i]->fwd_pointer[i] != curr) 
 			break; //modifications for upper levels don't apply (passed the level of the curr node)
-
 		update_vector[i]->fwd_pointer[i] = curr->fwd_pointer[i];
 	}
-	free(curr); //FIXME we will use tombstones?
+	free(curr);
 
 	//previous skplist->level dont have nodes anymore. header points to NIL, so reduce the level of the list
-	while (skplist->level > 0 && skplist->header->fwd_pointer[skplist->level]->is_NIL)
-		--skplist->level;
+	while (skiplist->level > 0 && skiplist->header->fwd_pointer[skiplist->level]->is_NIL)
+		--skiplist->level;
 }
 
 bool minos_delete(struct minos *skiplist, const char *key, uint32_t key_size)
 {
 	int ret;
-	struct minos_node *update_vector[SKIPLIST_MAX_LEVELS];
+	struct minos_node *update_vector[SKIPLIST_MAX_LEVELS] = {0};
 	struct minos_node *curr = skiplist->header;
 
-	for (int i = skiplist->level; i >= 0; i--) {
+  int max_level = minos_calc_level(skiplist);
+	for (int i = max_level; i >= 0; i--) {
 		while (1) {
-			if (curr->fwd_pointer[i]->is_NIL == 1)
+			if (curr->fwd_pointer[i]->is_NIL)
 				break; //reached sentinel
 
 			ret = skiplist->comparator(curr->fwd_pointer[i]->kv->key, key,
@@ -415,16 +419,16 @@ bool minos_delete(struct minos *skiplist, const char *key, uint32_t key_size)
 		return false; //Did not found the key to delete (reached sentinel)
 	if (ret != 0)
 		return false; //key not found
+	// log_debug("Key: %.*s for deletion found is curr list header? :%s", key_size, key,
+	// 	  curr == skiplist->header->fwd_pointer[0] ? "YES" : "NO");
 	minos_delete_key(skiplist, update_vector, curr);
 	return true;
 }
 
-
-
 bool minos_iter_seek_equal_or_imm_less(struct minos_iterator *iter, struct minos *skiplist, uint32_t search_key_size,
 				       char *search_key, bool *exact_match)
 {
-  iter->skiplist = skiplist;
+	iter->skiplist = skiplist;
 	int ret = INT_MAX;
 
 	minos_rd_lock(skiplist->header);
@@ -448,7 +452,7 @@ bool minos_iter_seek_equal_or_imm_less(struct minos_iterator *iter, struct minos
 			if (0 == ret) {
 				iter->iter_node = iter->iter_node->fwd_pointer[level_id];
 				*exact_match = true;
-        goto exit;
+				goto exit;
 			}
 			break;
 		}
@@ -538,15 +542,16 @@ char *minos_iter_get_value(struct minos_iterator *iter, uint32_t *value_size)
 	return iter->iter_node->kv->value;
 }
 
-void minos_free(struct minos *skiplist)
+bool minos_free(struct minos *skiplist, callback process, void *cnxt)
 {
-
 	struct minos_node *curr = skiplist->header;
 
 	while (!curr->is_NIL) {
 		struct minos_node *next_curr = curr->fwd_pointer[0];
 		// log_info("Freeing %lu", curr);
 		if (curr->kv) {
+			if (process)
+				(*process)(curr->kv->value, cnxt);
 			free(curr->kv->key);
 			free(curr->kv->value);
 			free(curr->kv);
@@ -556,12 +561,15 @@ void minos_free(struct minos *skiplist)
 	}
 	//free sentinel
 	if (curr->kv) {
+		if (process)
+			(*process)(curr->kv->value, cnxt);
 		free(curr->kv->key);
 		free(curr->kv->value);
 		free(curr->kv);
 	}
 	free(curr);
 	free(skiplist);
+	return true;
 }
 
 struct minos_value minos_get_head_copy(struct minos *skiplist)

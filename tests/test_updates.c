@@ -98,7 +98,7 @@ void test_minos(int num_pairs)
 		free(result.value);
 	}
 	log_info("SUCCESS!");
-	minos_free(skiplist);
+	minos_free(skiplist, NULL, NULL);
 }
 
 int main(int argc, char *argv[])
