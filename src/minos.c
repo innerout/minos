@@ -391,7 +391,7 @@ static void minos_delete_key(struct minos *skiplist, struct minos_node **update_
 
 bool minos_delete(struct minos *skiplist, const char *key, uint32_t key_size)
 {
-	int ret;
+	int ret = 0;
 	struct minos_node *update_vector[SKIPLIST_MAX_LEVELS] = {0};
 	struct minos_node *curr = skiplist->header;
 
@@ -401,7 +401,7 @@ bool minos_delete(struct minos *skiplist, const char *key, uint32_t key_size)
 			if (curr->fwd_pointer[i]->is_NIL)
 				break; //reached sentinel
 
-			ret = skiplist->comparator(curr->fwd_pointer[i]->kv->key, key,
+			ret = skiplist->comparator(curr->fwd_pointer[i]->kv->key, (void *)key,
 						   curr->fwd_pointer[i]->kv->key_size, key_size);
 			if (ret >= 0)
 				break;
@@ -413,8 +413,7 @@ bool minos_delete(struct minos *skiplist, const char *key, uint32_t key_size)
 	//retrieve it and check for existence
 	curr = curr->fwd_pointer[0];
 	if (!curr->is_NIL)
-		// ret = memcmp(curr->kv->key, key, key_size);
-		ret = skiplist->comparator(curr->kv->key, key, curr->kv->key_size, key_size);
+		ret = skiplist->comparator(curr->kv->key, (void *)key, curr->kv->key_size, key_size);
 	else
 		return false; //Did not found the key to delete (reached sentinel)
 	if (ret != 0)
