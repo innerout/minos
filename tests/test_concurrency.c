@@ -122,8 +122,8 @@ static void compare_the_lists(struct skiplist *clist, struct skiplist *swlist)
 			swcurr = swcurr->forward_pointer[0];
 			ccurr = ccurr->forward_pointer[0];
 		} else {
-			printf("Found key %s over %s that doesnt exist at the concurrent skiplist\n", swcurr->kv->key,
-			       ccurr->kv->key);
+			printf("Found key %s over %s that doesnt exist at the concurrent skiplist\n", (char*) swcurr->kv->key,
+			       (char*)ccurr->kv->key);
 			break;
 		}
 	}
