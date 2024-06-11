@@ -7,6 +7,13 @@ project(
 
 option(USE_SANITIZER "Use sanitizer: Address, Thread, Memory, Undefined" "")
 
+if(NOT (${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR}))
+  set(BUILD_TESTING False)
+else()
+  set(BUILD_TESTING True)
+endif()
+
+
 # Add sanitizer options if enabled
 if(USE_SANITIZER)
   if(USE_SANITIZER STREQUAL "Address")
@@ -29,20 +36,24 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/.git")
   set(default_build_type "Debug")
 endif()
 
+# Set default build type to Release if none is specified
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-  message(
-    STATUS
-      "Setting build type to '${default_build_type}' as none was specified.")
-  set(CMAKE_BUILD_TYPE
-      "${default_build_type}"
-      CACHE STRING "Choose the type of build." FORCE)
+  set(default_build_type "Release")
+  message(STATUS "Setting build type to '${default_build_type}' as none was specified.")
+  set(CMAKE_BUILD_TYPE "${default_build_type}" CACHE STRING "Choose the type of build." FORCE)
   # Set the possible values of build type for cmake-gui
-  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release"
-                                               "MinSizeRel" "RelWithDebInfo")
+  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
 endif()
+
+# Print the build type being used
+message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
+
+# Add definition for release build
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
   add_definitions(-DRELEASE_BUILD)
 endif()
+
+
 
 include(FetchContent)
 include(CTest)
