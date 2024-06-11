@@ -135,8 +135,8 @@ int main()
 	srand(time(0));
 	int i;
 	struct thread_info thread_buf[NUM_OF_THREADS];
-	struct minos *skiplist_single_writer = minos_init();
-	concurrent_skiplist = minos_init();
+	struct minos *skiplist_single_writer = minos_init(true);
+	concurrent_skiplist = minos_init(true);
 
 	populate_skiplist_with_single_writer(skiplist_single_writer);
 

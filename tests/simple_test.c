@@ -142,7 +142,7 @@ int main()
 	int i;
 	struct thread_info thread_buf[NUM_OF_THREADS];
 
-	my_skiplist = minos_init();
+	my_skiplist = minos_init(true);
 	assert(my_skiplist->level == 0);
 	for (i = 0; i < SKIPLIST_MAX_LEVELS; i++)
 		assert(my_skiplist->header->fwd_pointer[i] == my_skiplist->NIL_element);

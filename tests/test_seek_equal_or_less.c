@@ -61,7 +61,7 @@ bool process_callback(void *value, void *cnxt)
 // Test function
 void test_minos(int num_pairs)
 {
-	struct minos *skiplist = minos_init();
+	struct minos *skiplist = minos_init(true);
 	fprintf(stderr, "Is minos empty?: %s\n", minos_is_empty(skiplist) ? "YES" : "NO");
 
 	// Insert random key-value pair
@@ -115,7 +115,7 @@ void test_minos(int num_pairs)
 	// }
 
 	//Now delete everything
-	for (int i = 0; i < num_pairs-1; ++i) {
+	for (int i = 0; i < num_pairs; ++i) {
 		uint32_t key_size;
 		char *key = generate_delete_key(&key_size);
 		log_debug("Created key: %s for deletion of size %u", (char *)key, key_size);
@@ -127,7 +127,7 @@ void test_minos(int num_pairs)
 	}
   if(false == minos_is_empty(skiplist)){
     log_fatal("Skip list should be empty after delete");
-    // _exit(EXIT_FAILURE);
+    _exit(EXIT_FAILURE);
   }
 	fprintf(stderr, "Is minos empty?: %s\n", minos_is_empty(skiplist) ? "YES" : "NO");
 

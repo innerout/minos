@@ -46,7 +46,7 @@ void *generate_search_key(uint32_t *key_size, bool reset)
 // Test function
 void test_minos(int num_pairs)
 {
-	struct minos *skiplist = minos_init();
+	struct minos *skiplist = minos_init(true);
 
 	// Insert random key-value pairs
 	for (int i = 0; i < num_pairs; ++i) {
@@ -95,10 +95,11 @@ void test_minos(int num_pairs)
 
 		log_debug("</seek>");
 		free(search_key);
-		free(result.value);
 	}
 	log_info("SUCCESS!");
+  log_info("Freeing skiplist...!");
 	minos_free(skiplist, NULL, NULL);
+  log_info("Freeing skiplist...DONE!");
 }
 
 int main(int argc, char *argv[])
