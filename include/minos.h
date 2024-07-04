@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-#define SKIPLIST_MAX_LEVELS 12 
+#define SKIPLIST_MAX_LEVELS 12
 #include <pthread.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -49,7 +49,7 @@ struct minos {
 	minos_comparator comparator;
 	/* generic node allocator */
 	minos_make_node make_node;
-  bool enable_locks;
+	bool enable_locks;
 };
 
 struct minos_iterator {
@@ -64,7 +64,6 @@ struct minos_value {
 	uint32_t value_size;
 	uint8_t found;
 };
-
 
 struct minos *minos_init(bool is_thread_safe);
 bool minos_is_empty(struct minos *minos);
@@ -84,6 +83,7 @@ uint32_t minos_free(struct minos *skiplist, callback process, void *cnxt);
 /*iterators staff*/
 bool minos_iter_seek_equal_or_imm_less(struct minos_iterator *iter, struct minos *skiplist, uint32_t key_size,
 				       char *search_key, bool *exact_match);
+struct minos_node *minos_get_middle(struct minos *skiplist);
 void minos_iter_seek_first(struct minos_iterator *iter, struct minos *skiplist);
 void minos_iter_get_next(struct minos_iterator *iter);
 char *minos_iter_get_key(struct minos_iterator *iter, uint32_t *key_size);
