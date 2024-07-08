@@ -462,6 +462,11 @@ struct minos_node *minos_get_middle(struct minos *skiplist)
 		fast_ptr = fast_ptr->fwd_pointer[0]->fwd_pointer[0];
 		slow_ptr = slow_ptr->fwd_pointer[0];
 	}
+
+	// if the list has only the sentinel node, return NULL
+	if (slow_ptr == skiplist->header)
+		return NULL;
+
 	return slow_ptr;
 }
 
