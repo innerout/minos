@@ -453,11 +453,6 @@ exit:
 	return iter->is_valid;
 }
 
-struct minos_node *minos_get_first(struct minos *skiplist)
-{
-	return skiplist->header->fwd_pointer[0];
-}
-
 // get the middle node of the list
 struct minos_node *minos_get_middle(struct minos *skiplist)
 {
@@ -476,12 +471,21 @@ struct minos_node *minos_get_middle(struct minos *skiplist)
 	return slow_ptr;
 }
 
-struct minos_node *minos_get_last(struct minos *skiplist)
+struct minos_node **minos_get_all(struct minos *skiplist)
 {
-	struct minos_node *curr = skiplist->header;
-	while (!curr->fwd_pointer[0]->is_NIL)
+	// allocate an array of pointers to the nodes
+	struct minos_node **nodes = calloc(1UL, sizeof(struct minos_node *) * 100000);
+	struct minos_node *curr = skiplist->header->fwd_pointer[0];
+	struct minos_node **start = nodes;
+
+	while (curr != skiplist->NIL_element) {
+		// add the current node to the array
+		*nodes = curr;
+		nodes++;
 		curr = curr->fwd_pointer[0];
-	return curr;
+	}
+
+	return start;
 }
 
 /*initialize a scanner to the first key of the skiplist
