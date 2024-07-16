@@ -452,6 +452,12 @@ exit:
 	iter->is_valid = (iter->iter_node == iter->skiplist->header) ? false : true;
 	return iter->is_valid;
 }
+
+struct minos_node *minos_get_first(struct minos *skiplist)
+{
+	return skiplist->header->fwd_pointer[0];
+}
+
 // get the middle node of the list
 struct minos_node *minos_get_middle(struct minos *skiplist)
 {
@@ -468,6 +474,14 @@ struct minos_node *minos_get_middle(struct minos *skiplist)
 		return NULL;
 
 	return slow_ptr;
+}
+
+struct minos_node *minos_get_last(struct minos *skiplist)
+{
+	struct minos_node *curr = skiplist->header;
+	while (!curr->fwd_pointer[0]->is_NIL)
+		curr = curr->fwd_pointer[0];
+	return curr;
 }
 
 /*initialize a scanner to the first key of the skiplist
